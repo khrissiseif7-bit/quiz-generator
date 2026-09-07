@@ -1,0 +1,69 @@
+/*
+ * style.css — Feuille de style globale.
+ *
+ * Contenu prévu (pas de logique, uniquement présentation) :
+ *   1. Variables CSS (thème, espacements, couleurs)
+ *   2. Reset minimal
+ *   3. Support de la mise en page RTL via [dir="rtl"]
+ *   4. Styles des 3 écrans et composants
+ *
+ * NB : la bascule dir="rtl" est effectuée en JS par I18n.js sur <html>.
+ *      Le CSS ci-dessous se contente d'y RÉAGIR.
+ */
+
+/* ============ 1. Variables CSS ============ */
+:root {
+  --color-bg: #ffffff;
+  --color-text: #1a1a1a;
+  --color-primary: #2563eb;
+  --color-error: #dc2626;
+  --color-muted: #6b7280;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --radius: 8px;
+  --font-base: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+}
+
+/* ============ 2. Reset minimal ============ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-base);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.5;
+  padding: var(--space-2);
+}
+
+/* ============ 3. Support RTL ============ */
+/* TODO: styles réagissant à l'arabe (alignement, sens des marges logiques). */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .app-toolbar {
+  /* Utiliser des propriétés logiques (margin-inline, etc.) plutôt que left/right. */
+}
+
+/* ============ 4. Écrans et composants ============ */
+/* TODO: styliser .app-header, .app-toolbar, .screen, .upload-zone,
+   .quiz-question, .quiz-choices, .flashcard, .result-review. */
+
+.screen {
+  /* Un seul écran visible : l'attribut [hidden] est géré par les Views. */
+}
+
+.error-message {
+  color: var(--color-error);
+}
+
+[hidden] {
+  display: none !important;
+}

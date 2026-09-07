@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!--
+  index.html — Structure sémantique de l'application (SPA sans framework).
+
+  ARCHITECTURE :
+  - Ce fichier ne contient AUCUNE logique. Il déclare uniquement le squelette
+    des 3 écrans. Le JS (views) manipule le DOM ; le HTML reste passif.
+  - 3 écrans, un seul visible à la fois (attribut [hidden] piloté par les Views) :
+      1. #screen-upload   -> saisie/collage du cours ou dépôt d'un PDF
+      2. #screen-quiz     -> déroulé des questions (et flashcards)
+      3. #screen-result   -> score final et récapitulatif
+  - L'attribut dir="rtl" est posé dynamiquement sur <html> par I18n.js
+    lorsque la langue est l'arabe.
+-->
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Générateur de Quiz</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1 data-i18n="app_title">Générateur de Quiz</h1>
+    <nav class="app-toolbar">
+      <!-- Sélecteurs de langue/difficulté/nombre reliés à SettingsModel via UploadController -->
+      <label data-i18n="label_language">Langue</label>
+      <select id="select-language" aria-label="Langue"></select>
+
+      <label data-i18n="label_difficulty">Difficulté</label>
+      <select id="select-difficulty" aria-label="Difficulté"></select>
+
+      <label data-i18n="label_count">Questions</label>
+      <input id="input-count" type="number" min="1" max="20" value="10" />
+    </nav>
+  </header>
+
+  <main class="app-main">
+
+    <!-- ================= ÉCRAN 1 : UPLOAD ================= -->
+    <section id="screen-upload" class="screen" aria-labelledby="upload-title">
+      <h2 id="upload-title" data-i18n="upload_title">Importer un cours</h2>
+
+      <div class="upload-zone">
+        <label for="file-pdf" data-i18n="upload_pdf">Déposer un PDF</label>
+        <input id="file-pdf" type="file" accept="application/pdf" />
+      </div>
+
+      <div class="upload-or" data-i18n="upload_or">— ou —</div>
+
+      <div class="upload-zone">
+        <label for="textarea-source" data-i18n="upload_paste">Coller le texte du cours</label>
+        <textarea id="textarea-source" rows="12"></textarea>
+      </div>
+
+      <p id="upload-error" class="error-message" role="alert" hidden></p>
+      <button id="btn-generate" type="button" data-i18n="btn_generate">Générer le quiz</button>
+    </section>
+
+    <!-- ================= ÉCRAN 2 : QUIZ ================= -->
+    <section id="screen-quiz" class="screen" aria-labelledby="quiz-title" hidden>
+      <h2 id="quiz-title" data-i18n="quiz_title">Quiz</h2>
+
+      <div class="quiz-progress">
+        <span id="quiz-index">1</span> / <span id="quiz-total">10</span>
+      </div>
+
+      <!-- Zone remplie par QuizView à partir de la question courante -->
+      <article id="quiz-question" class="quiz-question"></article>
+      <ul id="quiz-choices" class="quiz-choices"></ul>
+
+      <!-- Zone flashcard, remplie par FlashcardView -->
+      <aside id="flashcard" class="flashcard" hidden></aside>
+
+      <div class="quiz-actions">
+        <button id="btn-prev" type="button" data-i18n="btn_prev">Précédent</button>
+        <button id="btn-next" type="button" data-i18n="btn_next">Suivant</button>
+        <button id="btn-finish" type="button" data-i18n="btn_finish">Terminer</button>
+      </div>
+    </section>
+
+    <!-- ================= ÉCRAN 3 : RÉSULTAT ================= -->
+    <section id="screen-result" class="screen" aria-labelledby="result-title" hidden>
+      <h2 id="result-title" data-i18n="result_title">Résultat</h2>
+
+      <p class="result-score">
+        <span id="result-score">0</span> / <span id="result-total">0</span>
+      </p>
+
+      <!-- Récapitulatif question par question, rempli par ResultView -->
+      <ol id="result-review" class="result-review"></ol>
+
+      <button id="btn-restart" type="button" data-i18n="btn_restart">Recommencer</button>
+    </section>
+
+  </main>
+
+  <!-- Point d'entrée unique. Charge et câble models/views/controllers. -->
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

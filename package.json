@@ -1,0 +1,19 @@
+{
+  "name": "quiz-generator",
+  "version": "0.1.0",
+  "description": "Générateur de quiz à partir d'un cours (PDF ou texte collé) — projet étudiant, architecture MVC stricte.",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node --watch server/server.js"
+  },
+  "//dependencies": "Dépendances PRÉVUES — ne pas installer pour l'instant.",
+  "dependencies": {
+    "express": "^4.19.2",
+    "dotenv": "^16.4.5"
+  },
+  "//dependencies_provider": "Le SDK du provider LLM (ex: openai / @anthropic-ai/sdk) sera ajouté à l'étape d'implémentation de llm.service.js.",
+  "//dependencies_front": "pdf.js (pdfjs-dist) est chargé côté client via CDN/module dans PdfExtractor.js, donc hors package.json serveur.",
+  "devDependencies": {},
+  "license": "MIT"
+}
