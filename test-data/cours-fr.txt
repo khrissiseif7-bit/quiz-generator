@@ -1,0 +1,88 @@
+LES LOIS DE NEWTON ET LE MOUVEMENT DES CORPS
+
+1. Introduction : décrire le mouvement
+
+La mécanique est la partie de la physique qui étudie le mouvement des corps
+et les causes qui le produisent. Pour décrire un mouvement, on a besoin d'un
+référentiel, c'est-à-dire un solide de référence par rapport auquel on repère
+les positions. Un même mouvement peut être différent selon le référentiel
+choisi : un passager assis dans un train est immobile par rapport au train,
+mais en mouvement par rapport au quai.
+
+Définition : la vitesse moyenne d'un point est le rapport de la distance
+parcourue par la durée du parcours. On la note v = d / t. Dans le Système
+International, la distance s'exprime en mètres (m), la durée en secondes (s),
+et la vitesse en mètres par seconde (m/s).
+
+Exemple chiffré : une voiture parcourt 150 kilomètres en 2 heures. Sa vitesse
+moyenne vaut v = 150 / 2 = 75 km/h. Pour convertir en m/s, on divise par 3,6 :
+75 / 3,6 ≈ 20,8 m/s.
+
+2. Le principe d'inertie (première loi de Newton)
+
+Définition : dans un référentiel galiléen, tout corps qui n'est soumis à aucune
+force, ou à des forces qui se compensent, est soit au repos, soit en mouvement
+rectiligne uniforme. C'est le principe d'inertie.
+
+L'inertie est la tendance d'un corps à conserver son état de mouvement. Plus la
+masse d'un objet est grande, plus son inertie est importante. Il est plus
+difficile d'arrêter un camion de 10 tonnes lancé à 50 km/h qu'un vélo lancé à
+la même vitesse.
+
+On distingue plusieurs forces courantes :
+- le poids, force d'attraction exercée par la Terre, toujours dirigée vers le bas ;
+- la réaction du support, exercée par une surface sur l'objet qui repose dessus ;
+- les forces de frottement, qui s'opposent au mouvement ;
+- la tension d'un fil ou d'un ressort.
+
+3. Le principe fondamental de la dynamique (deuxième loi de Newton)
+
+Définition : dans un référentiel galiléen, la somme des forces appliquées à un
+corps est égale au produit de sa masse par son accélération. On écrit cette
+relation sous la forme : ΣF = m × a. La force se mesure en newtons (N), la masse
+en kilogrammes (kg) et l'accélération en mètres par seconde carrée (m/s²).
+
+L'accélération mesure la variation de la vitesse au cours du temps. Un corps
+accélère lorsque sa vitesse augmente, et décélère lorsqu'elle diminue.
+
+Exemple chiffré : on applique une force de 200 N à un chariot de masse 40 kg,
+posé sur un sol sans frottement. Son accélération vaut a = F / m = 200 / 40 = 5
+m/s². Cela signifie que la vitesse du chariot augmente de 5 m/s chaque seconde.
+
+Autre exemple : le poids d'un objet est P = m × g, où g est l'intensité de la
+pesanteur, environ 9,8 N/kg sur Terre. Un objet de 3 kg a donc un poids de
+P = 3 × 9,8 = 29,4 N.
+
+4. Le principe des actions réciproques (troisième loi de Newton)
+
+Définition : lorsqu'un corps A exerce une force sur un corps B, le corps B
+exerce simultanément sur A une force de même intensité, de même direction, mais
+de sens opposé. On résume cela par la phrase : « à toute action correspond une
+réaction ».
+
+Exemple : quand on marche, le pied pousse le sol vers l'arrière ; en retour, le
+sol pousse le pied vers l'avant, ce qui permet d'avancer. De même, la propulsion
+d'une fusée repose sur ce principe : les gaz sont éjectés vers le bas, et la
+fusée est propulsée vers le haut.
+
+5. Chute libre et applications
+
+Un corps est en chute libre lorsqu'il n'est soumis qu'à son poids, les
+frottements de l'air étant négligés. Dans ce cas, tous les corps tombent avec la
+même accélération g, indépendamment de leur masse. C'est ce qu'a illustré
+l'expérience de la plume et du marteau lâchés sur la Lune, où ils touchent le sol
+en même temps.
+
+Exemple chiffré : un objet lâché sans vitesse initiale acquiert une vitesse
+v = g × t. Après 3 secondes de chute, sa vitesse vaut v = 9,8 × 3 = 29,4 m/s.
+La distance parcourue est d = ½ × g × t² = 0,5 × 9,8 × 9 = 44,1 mètres.
+
+6. Résumé
+
+Les trois lois de Newton constituent le fondement de la mécanique classique.
+La première décrit le comportement d'un corps isolé, la deuxième relie les
+forces à l'accélération, et la troisième décrit l'interaction entre deux corps.
+Elles permettent de prévoir et d'expliquer une grande variété de mouvements,
+depuis la chute d'une pomme jusqu'à la trajectoire des satellites. Retenir les
+unités du Système International et savoir convertir les grandeurs sont des
+compétences essentielles pour résoudre les exercices de mécanique.

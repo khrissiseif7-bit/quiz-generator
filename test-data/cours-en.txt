@@ -1,0 +1,99 @@
+INTRODUCTION TO COMPUTER NETWORKS AND THE TCP/IP MODEL
+
+1. What is a computer network?
+
+A computer network is a group of two or more computing devices connected
+together so they can exchange data and share resources such as files,
+printers, and internet access. The device that requests a service is called
+the client, while the device that provides the service is called the server.
+
+Definition: a protocol is a set of rules that defines how data is formatted,
+transmitted, and received between devices. Without shared protocols, two
+machines from different manufacturers could not communicate reliably.
+
+Networks are usually classified by their geographic size:
+- LAN (Local Area Network): covers a small area such as a home or office.
+- MAN (Metropolitan Area Network): spans a city or campus.
+- WAN (Wide Area Network): connects devices across countries; the internet
+  is the largest WAN in existence.
+- PAN (Personal Area Network): links devices around a single person, for
+  example a phone paired with wireless earbuds over Bluetooth.
+
+2. The TCP/IP model and its layers
+
+Modern networks are organized into layers, each responsible for a specific
+task. The TCP/IP model, which underpins the internet, is commonly described
+using four layers:
+
+- Application layer: handles user-facing protocols such as HTTP, FTP, and DNS.
+- Transport layer: manages end-to-end delivery using TCP or UDP.
+- Internet layer: handles addressing and routing using the IP protocol.
+- Network access layer: deals with the physical transmission of bits over
+  cables or radio waves.
+
+Definition: encapsulation is the process by which each layer adds its own
+header of control information to the data received from the layer above,
+before passing it down. The reverse process at the receiver is called
+decapsulation.
+
+3. IP addresses and addressing
+
+Every device on a network needs a unique identifier called an IP address.
+In version 4 (IPv4), an address is made of 32 bits, written as four numbers
+separated by dots, for example 192.168.1.10. Each of the four numbers ranges
+from 0 to 255.
+
+Numeric example: because each of the four octets can take 256 different values,
+the total number of possible IPv4 addresses is 256 × 256 × 256 × 256, which
+equals about 4.3 billion addresses. This total proved too small for the modern
+internet, which is why IPv6, using 128-bit addresses, was introduced to provide
+a vastly larger address space.
+
+Definition: a subnet mask, such as 255.255.255.0, separates an IP address into
+a network part and a host part. In this example the first three octets identify
+the network and the last octet identifies the individual host, allowing up to
+254 usable devices on that subnet.
+
+4. TCP versus UDP
+
+The transport layer offers two main protocols with different trade-offs.
+
+TCP (Transmission Control Protocol) is connection-oriented and reliable. It
+establishes a connection through a three-way handshake, numbers each segment,
+and retransmits any data that is lost. This makes it suitable for web pages,
+email, and file transfers where accuracy matters more than speed.
+
+UDP (User Datagram Protocol) is connectionless and does not guarantee delivery.
+It sends data without setting up a connection and without retransmission. This
+makes it faster and well suited to live video, online gaming, and voice calls,
+where a small amount of lost data is preferable to delay.
+
+Numeric example: suppose a file of 10 000 bytes is sent using TCP with a
+segment size of 500 bytes. The file is divided into 10 000 / 500 = 20 segments,
+each carrying a sequence number so the receiver can reassemble them in order,
+even if they arrive out of sequence.
+
+5. Ports and common services
+
+Definition: a port number is a 16-bit value that identifies a specific
+application or service on a device, so that a single machine can run many
+network services at once. Well-known port numbers include:
+- 80 for HTTP (web pages)
+- 443 for HTTPS (secure web pages)
+- 25 for SMTP (sending email)
+- 53 for DNS (domain name resolution)
+- 22 for SSH (secure remote login)
+
+DNS, the Domain Name System, acts as the phone book of the internet: it
+translates human-readable names such as example.com into numeric IP addresses
+that machines use to locate each other.
+
+6. Summary
+
+Computer networks allow devices to communicate by following agreed protocols
+organized into layers. The TCP/IP model divides the work into four layers, from
+the physical transmission of bits up to user applications. IP addresses identify
+devices, subnet masks split networks into smaller parts, and the transport layer
+chooses between reliable TCP and fast UDP depending on the needs of the
+application. Understanding these fundamentals is the first step toward
+configuring, troubleshooting, and securing any modern network.
