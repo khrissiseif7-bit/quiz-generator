@@ -16,6 +16,7 @@ import { I18n } from "./services/I18n.js";
 import { ApiClient } from "./services/ApiClient.js";
 import { Validator } from "./services/Validator.js";
 import { LanguageDetector } from "./services/LanguageDetector.js";
+import { PdfExtractor } from "./services/PdfExtractor.js";
 
 import { DocumentModel } from "./models/DocumentModel.js";
 import { QuizModel } from "./models/QuizModel.js";
@@ -41,6 +42,7 @@ function bootstrap() {
   const apiClient = new ApiClient();
   const validator = new Validator();
   const languageDetector = new LanguageDetector();
+  const pdfExtractor = new PdfExtractor();
 
   // 2. Models (reçoivent le bus).
   const documentModel = new DocumentModel(bus);
@@ -59,7 +61,7 @@ function bootstrap() {
   // 4. Controllers (injection des Models et Services).
   new UploadController({
     bus, documentModel, settingsModel, quizModel,
-    apiClient, validator, languageDetector, i18n,
+    apiClient, validator, languageDetector, pdfExtractor, i18n,
   });
   new QuizController({ bus, quizModel });
 

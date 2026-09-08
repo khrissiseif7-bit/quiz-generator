@@ -29,6 +29,12 @@ export class UploadView {
     this.error = document.getElementById("upload-error");
     this.btnGenerate = document.getElementById("btn-generate");
 
+    // Zone de dépôt PDF.
+    this.dropzone = document.getElementById("pdf-dropzone");
+    this.filePdf = document.getElementById("file-pdf");
+    this.pdfProgress = document.getElementById("pdf-progress");
+    this.pdfSummary = document.getElementById("pdf-summary");
+
     // --- Intentions utilisateur (DOM -> bus) ---
     this.textarea.addEventListener("input", () => {
       this.bus.publish("ui:text-changed", { text: this.textarea.value });
@@ -50,6 +56,33 @@ export class UploadView {
       this.bus.publish("ui:generate", {});
     });
 
+    // --- Dépôt PDF (clic + glisser-déposer) : on émet seulement l'intention ;
+    //     la validation (taille, pages, scanné) est faite par le Controller. ---
+    this.dropzone.addEventListener("click", () => this.filePdf.click());
+    this.dropzone.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); this.filePdf.click(); }
+    });
+    this.filePdf.addEventListener("change", () => {
+      const fichier = this.filePdf.files && this.filePdf.files[0];
+      if (fichier) this.bus.publish("ui:pdf-selected", { file: fichier });
+      this.filePdf.value = ""; // autorise à re-choisir le même fichier
+    });
+    ["dragenter", "dragover"].forEach((evt) =>
+      this.dropzone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        this.dropzone.classList.add("dragover");
+      })
+    );
+    ["dragleave", "dragend"].forEach((evt) =>
+      this.dropzone.addEventListener(evt, () => this.dropzone.classList.remove("dragover"))
+    );
+    this.dropzone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      this.dropzone.classList.remove("dragover");
+      const fichier = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (fichier) this.bus.publish("ui:pdf-selected", { file: fichier });
+    });
+
     // --- Réactions aux événements ---
     this.bus.subscribe("document:changed", (e) => this._renderCounter(e));
     this.bus.subscribe("app:error", ({ message }) => this._showError(message));
@@ -57,8 +90,23 @@ export class UploadView {
       this.section.hidden = name !== "upload";
       if (name === "loading") this._hideError(); // nouvel essai en cours
     });
-    // Quand la langue de l'interface change, on redemande un rendu des libellés
-    // dynamiques (compteur/indice) via le contrôleur (qui re-publie l'état).
+
+    // Extraction PDF : progression, puis remplissage du textarea + résumé.
+    this.bus.subscribe("app:pdf-progress", ({ page, total }) => {
+      this.pdfSummary.hidden = true;
+      this.pdfProgress.hidden = false;
+      this.pdfProgress.textContent = total > 0
+        ? this.i18n.t("pdf_extracting", { page, total })
+        : this.i18n.t("pdf_extracting_start");
+    });
+    this.bus.subscribe("pdf:extracted", ({ filename, pages, chars, text }) => {
+      this.textarea.value = text; // texte modifiable par l'utilisateur avant génération
+      this.pdfProgress.hidden = true;
+      this.pdfSummary.hidden = false;
+      this.pdfSummary.textContent = this.i18n.t("pdf_summary", { filename, pages, chars });
+    });
+    // Quand la langue de l'interface change, le contrôleur re-publie l'état du
+    // texte pour re-traduire compteur/indice.
   }
 
   /**
@@ -83,6 +131,7 @@ export class UploadView {
   _showError(message) {
     this.error.textContent = message;
     this.error.hidden = false;
+    this.pdfProgress.hidden = true; // une erreur interrompt l'affichage de l'extraction
   }
 
   _hideError() {

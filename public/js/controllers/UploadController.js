@@ -42,6 +42,45 @@ export class UploadController {
     });
 
     this.bus.subscribe("ui:generate", () => this.handleGenerate());
+    this.bus.subscribe("ui:pdf-selected", ({ file }) => this.handlePdf(file));
+  }
+
+  /**
+   * Traite un PDF sélectionné : validations (type, taille, pages, PDF scanné),
+   * extraction via le Service PdfExtractor avec progression, puis remplissage
+   * du texte source. Aucune manipulation du DOM ici.
+   * @param {File} file
+   * @returns {Promise<void>}
+   */
+  async handlePdf(file) {
+    const estPdf = file && (file.type === "application/pdf" || /\.pdf$/i.test(file.name));
+    if (!estPdf) return this.bus.publish("app:error", { message: this.i18n.t("err_pdf_type") });
+    // Refus immédiat au-delà de 10 Mo (avant toute lecture).
+    if (file.size > 10 * 1024 * 1024) {
+      return this.bus.publish("app:error", { message: this.i18n.t("err_pdf_too_big") });
+    }
+
+    this.bus.publish("app:pdf-progress", { page: 0, total: 0 });
+    try {
+      const res = await this.pdfExtractor.extract(file, {
+        maxPages: 40,
+        onProgress: (page, total) => this.bus.publish("app:pdf-progress", { page, total }),
+      });
+      const pages = res.pages.length;
+      const chars = res.text.length;
+
+      // PDF scanné : moins de 50 caractères par page en moyenne -> c'est une
+      // image. On informe l'utilisateur, sans tenter d'OCR.
+      if (pages > 0 && chars / pages < 50) {
+        return this.bus.publish("app:error", { message: this.i18n.t("err_pdf_scanned") });
+      }
+
+      this.documentModel.setText(res.text); // met à jour compteur/validité
+      this.bus.publish("pdf:extracted", { filename: file.name, pages, chars, text: res.text });
+    } catch (err) {
+      const key = err.code === "TOO_MANY_PAGES" ? "err_pdf_too_many_pages" : "err_pdf_failed";
+      this.bus.publish("app:error", { message: this.i18n.t(key) });
+    }
   }
 
   /**

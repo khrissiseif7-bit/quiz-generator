@@ -35,6 +35,19 @@
     <section id="screen-upload" class="screen" aria-labelledby="upload-title">
       <h2 id="upload-title" data-i18n="upload_title">Colle ton cours</h2>
 
+      <!-- Zone de dépôt PDF (drag & drop + clic). Extraction via pdf.js (client). -->
+      <div class="field">
+        <label data-i18n="upload_pdf_label">Importer un PDF</label>
+        <div id="pdf-dropzone" class="dropzone" role="button" tabindex="0">
+          <input id="file-pdf" type="file" accept="application/pdf,.pdf" aria-label="PDF" hidden />
+          <span class="dropzone-text" data-i18n="upload_pdf">Dépose un PDF ici ou clique pour choisir</span>
+        </div>
+        <p id="pdf-progress" class="pdf-progress" role="status" hidden></p>
+        <p id="pdf-summary" class="pdf-summary" hidden></p>
+      </div>
+
+      <div class="upload-or" data-i18n="upload_or">— ou —</div>
+
       <div class="field">
         <label for="textarea-source" data-i18n="upload_paste">Texte du cours</label>
         <textarea id="textarea-source" rows="10"

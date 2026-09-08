@@ -117,6 +117,41 @@ textarea:focus, select:focus, input:focus {
   gap: var(--space-2);
 }
 
+/* Zone de dépôt PDF */
+.dropzone {
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  text-align: center;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dropzone:hover, .dropzone:focus { border-color: var(--color-primary); background: #f8faff; outline: none; }
+.dropzone.dragover { border-color: var(--color-primary); background: #eef4ff; color: var(--color-primary); }
+
+.pdf-progress {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.pdf-summary {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-correct);
+  background: var(--color-correct-bg);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.65rem;
+}
+
+.upload-or {
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  margin: var(--space-2) 0;
+}
+
 /* ============ Boutons ============ */
 .btn {
   display: inline-block;

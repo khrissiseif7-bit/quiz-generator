@@ -146,8 +146,10 @@ Déclarées dans `package.json`, à installer à l'étape d'implémentation :
 - **dotenv** — chargement des variables d'environnement (`server/.env`).
 - **SDK provider LLM** (ex. `openai` ou `@anthropic-ai/sdk`) — ajouté avec
   `llm.service.js`.
-- **pdf.js** (`pdfjs-dist`) — chargé **côté client** dans `PdfExtractor.js`
-  (via module/CDN), donc hors dépendances serveur.
+- **pdf.js** (`pdfjs-dist` 4.7.76) — **vendoré** dans `public/vendor/pdfjs/`
+  (`pdf.mjs` + `pdf.worker.mjs`) et chargé **localement** côté client par
+  `PdfExtractor.js` (import dynamique + `GlobalWorkerOptions.workerSrc`). Aucun
+  CDN au runtime ; hors dépendances serveur.
 
 ## Configuration
 
