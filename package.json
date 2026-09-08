@@ -7,13 +7,14 @@
     "start": "node server/server.js",
     "dev": "node --watch server/server.js"
   },
-  "//dependencies": "Dépendances PRÉVUES — ne pas installer pour l'instant.",
+  "//dependencies": "express (serveur/routage), dotenv (.env), ajv (validation du contrat), cors (accès local).",
   "dependencies": {
-    "express": "^4.19.2",
-    "dotenv": "^16.4.5"
+    "ajv": "^8.20.0",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2"
   },
-  "//dependencies_provider": "Le SDK du provider LLM (ex: openai / @anthropic-ai/sdk) sera ajouté à l'étape d'implémentation de llm.service.js.",
+  "//dependencies_provider": "Provider LLM = Google Gemini appelé via API REST avec fetch natif (aucun SDK) dans server/services/llm.service.js.",
   "//dependencies_front": "pdf.js (pdfjs-dist) est chargé côté client via CDN/module dans PdfExtractor.js, donc hors package.json serveur.",
-  "devDependencies": {},
   "license": "MIT"
 }

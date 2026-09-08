@@ -1,26 +1,56 @@
 /**
- * limits.js — Middleware de limites de taille.
+ * limits.js — Middleware de validation des entrées et des limites de taille.
  *
  * COUCHE : Middleware (serveur).
- * RÔLE : refuser (413) les requêtes dont le corps dépasse MAX_BODY_BYTES ou
- * dont le texte source dépasse MAX_TEXT_LENGTH caractères. Protège le service
- * LLM et les quotas contre des entrées trop volumineuses.
+ * RÔLE : rejeter tôt (avant tout appel LLM coûteux) les requêtes mal formées :
+ *   - texte trop court (< 300 caractères)      -> 400 TEXT_TOO_SHORT
+ *   - texte trop long  (> MAX_TEXT_LENGTH)     -> 413 TEXT_TOO_LONG
+ *   - language  hors {auto, fr, ar, en}        -> 400 INVALID_LANGUAGE
+ *   - difficulty hors {easy, medium, hard}     -> 400 INVALID_DIFFICULTY
+ *   - questionCount hors {5, 10, 15}           -> 400 INVALID_QUESTION_COUNT
  *
- * NB : la limite d'octets du corps peut aussi être posée au niveau
- * express.json({ limit }) dans server.js ; ce middleware vérifie en plus la
- * longueur métier du champ `text`.
+ * La taille brute du corps (250 ko) est déjà bornée par express.json dans
+ * server.js ; ici on contrôle la longueur MÉTIER du champ `text`.
  */
 
+// Valeurs autorisées, centralisées pour rester lisibles.
+const LANGUES_OK = ["auto", "fr", "ar", "en"];
+const DIFFICULTES_OK = ["easy", "medium", "hard"];
+const NB_QUESTIONS_OK = [5, 10, 15];
+
+// Longueur minimale d'un cours exploitable (en caractères).
+const MIN_TEXT_LENGTH = 300;
+
 /**
- * Middleware Express de contrôle des limites de taille.
- * @param {object} req - Requête ({ body:{ text } }).
- * @param {object} res - Réponse ; renvoie 413 { error:{code:413,message} } si dépassement.
- * @param {Function} next - Passe au middleware suivant si tout est dans les limites.
+ * Middleware Express de contrôle des entrées.
+ * @param {import("express").Request} req - Requête ({ body:{ text, language, difficulty, questionCount } }).
+ * @param {import("express").Response} res - Réponse ; renvoie l'erreur adaptée si invalide.
+ * @param {import("express").NextFunction} next - Middleware suivant si tout est valide.
  * @returns {void}
  */
 export function enforceLimits(req, res, next) {
-  // TODO: vérifier la longueur de req.body.text vs process.env.MAX_TEXT_LENGTH.
-  // TODO: (optionnel) vérifier la taille du corps vs MAX_BODY_BYTES si non couvert amont.
-  // TODO: si dépassement -> res.status(413).json({ error:{ code:413, message:"..." } }).
-  // TODO: sinon next().
+  const maxTextLength = Number(process.env.MAX_TEXT_LENGTH) || 50000;
+  const { text, language, difficulty, questionCount } = req.body || {};
+
+  // --- Texte source ---
+  if (typeof text !== "string" || text.trim().length < MIN_TEXT_LENGTH) {
+    return res.status(400).json({ error: "TEXT_TOO_SHORT" });
+  }
+  if (text.length > maxTextLength) {
+    return res.status(413).json({ error: "TEXT_TOO_LONG" });
+  }
+
+  // --- Paramètres de génération ---
+  if (!LANGUES_OK.includes(language)) {
+    return res.status(400).json({ error: "INVALID_LANGUAGE" });
+  }
+  if (!DIFFICULTES_OK.includes(difficulty)) {
+    return res.status(400).json({ error: "INVALID_DIFFICULTY" });
+  }
+  // questionCount peut arriver en nombre ou en chaîne selon le client : on normalise.
+  if (!NB_QUESTIONS_OK.includes(Number(questionCount))) {
+    return res.status(400).json({ error: "INVALID_QUESTION_COUNT" });
+  }
+
+  return next();
 }

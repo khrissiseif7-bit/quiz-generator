@@ -151,12 +151,47 @@ Déclarées dans `package.json`, à installer à l'étape d'implémentation :
 
 ## Configuration
 
-Copier `server/.env.example` en `server/.env` et renseigner : `PORT`,
-`ACCESS_CODE`, `LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL`, quotas et limites de taille.
-
-## Démarrage (à venir)
+Le fichier `.env` vit dans **`server/`** (à côté de `server/.env.example`) :
 
 ```bash
-npm install      # à l'étape d'implémentation
+cp server/.env.example server/.env   # puis compléter les valeurs
+```
+
+Renseigner : `PORT`, `ACCESS_CODE`, `LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL`,
+les quotas (`RATE_LIMIT_PER_IP`, `RATE_LIMIT_PER_IP_DAY`, `DAILY_GLOBAL_LIMIT`)
+et les limites de taille (`MAX_TEXT_LENGTH`, `MAX_BODY_BYTES`).
+
+> **Chargement du `.env`** — `server.js` charge ce fichier avec un **chemin
+> explicite** relatif au dossier `server/` :
+> ```js
+> dotenv.config({ path: path.join(__dirname, ".env") });
+> ```
+> Le `.env` est donc trouvé **quel que soit le répertoire de lancement** (racine
+> du projet ou `server/`). En ESM, ce chargement précède un **import dynamique**
+> du routeur, car certains modules (ex. `quota.service.js`) lisent `process.env`
+> dès leur chargement : un import statique s'exécuterait trop tôt.
+>
+> Notes : `ACCESS_CODE` vide ⇒ contrôle du code d'accès désactivé (mode
+> développement, avertissement au démarrage). `.env` est ignoré par git ;
+> ne jamais le committer.
+
+### Robustesse & diagnostic
+
+- **Repli de modèle** : si `LLM_MODEL` est retiré (404) ou saturé (503), le
+  service essaie automatiquement une liste de modèles Flash de repli et retient
+  le premier qui répond (voir `MODELES_REPLI` dans `llm.service.js`).
+- **Codes d'erreur distincts** : `LLM_UNAVAILABLE` (502) = échec réseau/API/modèle ;
+  `GENERATION_FAILED` (502) = trop de questions rejetées à la validation (< 60 %
+  de survivantes, après un second essai à température plus basse).
+- **`DEBUG_LLM=true`** : logs de diagnostic (statut + corps des erreurs Gemini,
+  JSON illisible, décompte et détail des rejets de validation). À laisser à
+  `false` en usage normal.
+
+## Démarrage
+
+```bash
+npm install
 npm run dev      # node --watch server/server.js
+# puis, dans un autre terminal, banc d'essai du prompt :
+node scripts/test-generate.js test-data/cours-fr.txt
 ```

@@ -2,26 +2,21 @@
  * quiz.routes.js — Déclaration des routes du quiz.
  *
  * COUCHE : Routes.
- * RÈGLE : les routes ne contiennent AUCUNE logique métier. Elles se limitent à
- * enchaîner les middlewares puis à déléguer au controller.
+ * RÈGLE : les routes ne portent AUCUNE logique métier. Elles enchaînent les
+ * middlewares puis délèguent au controller.
  *
  * Chaîne de la route POST /generate-quiz :
- *   accessCode -> limits -> quota(service via controller) -> quiz.controller.generate
+ *   accessCode (401) -> limits (400/413) -> quiz.controller.generate
+ *   (le quota 429/503 est appliqué dans le controller, au plus près de l'IP).
  */
 
-// TODO: import { Router } from "express";
-// TODO: import { requireAccessCode } from "../middlewares/accessCode.js";
-// TODO: import { enforceLimits } from "../middlewares/limits.js";
-// TODO: import { generate } from "../controllers/quiz.controller.js";
+import { Router } from "express";
+import { requireAccessCode } from "../middlewares/accessCode.js";
+import { enforceLimits } from "../middlewares/limits.js";
+import { generate } from "../controllers/quiz.controller.js";
 
-/**
- * Fabrique le routeur du module quiz.
- * @returns {object} Un Router Express avec les routes montées.
- */
-export function createQuizRouter() {
-  // TODO: const router = Router();
-  // TODO: router.post("/generate-quiz", requireAccessCode, enforceLimits, generate);
-  // TODO: return router;
-}
+const router = Router();
 
-// TODO: export default createQuizRouter();
+router.post("/generate-quiz", requireAccessCode, enforceLimits, generate);
+
+export default router;
