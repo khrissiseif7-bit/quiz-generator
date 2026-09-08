@@ -1,51 +1,55 @@
 /**
- * SettingsModel.js — Préférences de génération du quiz.
+ * SettingsModel.js — Préférences de génération + code d'accès.
  *
- * COUCHE : Model.
- * RÈGLE : ne touche JAMAIS au DOM. Publie ses changements via l'EventBus.
- *
- * RESPONSABILITÉ : mémoriser la langue choisie, la difficulté et le nombre
- * de questions demandé. Ces valeurs sont lues par UploadController pour
- * construire la requête envoyée à ApiClient.
+ * COUCHE : Model. Ne touche JAMAIS au DOM ; publie via l'EventBus.
+ * RESPONSABILITÉ : langue, difficulté, nombre de questions, et code d'accès.
+ * Le code d'accès est gardé EN MÉMOIRE le temps de la session uniquement
+ * (aucun stockage navigateur : ni localStorage ni cookie).
  */
 export class SettingsModel {
   /**
-   * @param {import("../services/EventBus.js").EventBus} bus - Bus d'événements partagé.
+   * @param {import("../services/EventBus.js").EventBus} bus
    */
   constructor(bus) {
-    // TODO: mémoriser le bus.
-    // TODO: initialiser des valeurs par défaut :
-    //       language ("fr"), difficulty ("medium"), count (10).
+    this.bus = bus;
+    this.language = "auto";     // auto | fr | ar | en
+    this.difficulty = "medium"; // easy | medium | hard
+    this.count = 10;            // 5 | 10 | 15
+    this.accessCode = "";       // en mémoire seulement
   }
 
-  /**
-   * @param {"fr"|"ar"|"en"} language - Langue cible du quiz.
-   * @returns {void}
-   */
-  setLanguage(language) {
-    // TODO: stocker language, publier "settings:changed".
-  }
+  /** @param {"auto"|"fr"|"ar"|"en"} language */
+  setLanguage(language) { this.language = language; this._changed(); }
+
+  /** @param {"easy"|"medium"|"hard"} difficulty */
+  setDifficulty(difficulty) { this.difficulty = difficulty; this._changed(); }
+
+  /** @param {number} count */
+  setCount(count) { this.count = Number(count); this._changed(); }
+
+  /** @param {string} code - Code d'accès (non persisté). */
+  setAccessCode(code) { this.accessCode = code || ""; }
+
+  /** @returns {string} Code d'accès courant. */
+  getAccessCode() { return this.accessCode; }
 
   /**
-   * @param {"easy"|"medium"|"hard"} difficulty - Difficulté cible.
-   * @returns {void}
+   * @returns {{language:string, difficulty:string, questionCount:number}}
+   *          Corps prêt pour ApiClient (respecte les noms du contrat).
    */
-  setDifficulty(difficulty) {
-    // TODO: stocker difficulty, publier "settings:changed".
+  toRequest() {
+    return {
+      language: this.language,
+      difficulty: this.difficulty,
+      questionCount: this.count,
+    };
   }
 
-  /**
-   * @param {number} count - Nombre de questions demandé (borné, ex. 1..20).
-   * @returns {void}
-   */
-  setCount(count) {
-    // TODO: stocker count (borné), publier "settings:changed".
-  }
-
-  /**
-   * @returns {{language:string, difficulty:string, count:number}} Copie des réglages courants.
-   */
-  toJSON() {
-    // TODO: retourner un objet plat des réglages.
+  _changed() {
+    this.bus.publish("settings:changed", {
+      language: this.language,
+      difficulty: this.difficulty,
+      count: this.count,
+    });
   }
 }

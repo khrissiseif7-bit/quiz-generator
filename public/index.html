@@ -3,99 +3,175 @@
   index.html — Structure sémantique de l'application (SPA sans framework).
 
   ARCHITECTURE :
-  - Ce fichier ne contient AUCUNE logique. Il déclare uniquement le squelette
-    des 3 écrans. Le JS (views) manipule le DOM ; le HTML reste passif.
-  - 3 écrans, un seul visible à la fois (attribut [hidden] piloté par les Views) :
-      1. #screen-upload   -> saisie/collage du cours ou dépôt d'un PDF
-      2. #screen-quiz     -> déroulé des questions (et flashcards)
-      3. #screen-result   -> score final et récapitulatif
-  - L'attribut dir="rtl" est posé dynamiquement sur <html> par I18n.js
-    lorsque la langue est l'arabe.
+  - Ce fichier ne contient AUCUNE logique. Il déclare le squelette des écrans.
+    Le JS (Views) manipule le DOM ; le HTML reste passif.
+  - Un seul écran visible à la fois (attribut [hidden] piloté par les Views) :
+      1. #screen-upload      -> collage du texte + options + code d'accès
+      2. #screen-loading     -> attente animée (génération 15–25 s)
+      3. #screen-quiz        -> une question à la fois
+      4. #screen-result      -> score et récapitulatif
+      5. #screen-flashcards  -> cartes de révision
+  - dir="rtl" est posé dynamiquement sur <html> par I18n.js pour l'arabe.
+  - NB : le dépôt de PDF n'est pas dans le périmètre de cette étape (texte seul).
 -->
 <html lang="fr" dir="ltr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
   <title>Générateur de Quiz</title>
+  <!-- Favicon vide : évite une requête /favicon.ico inutile (404). -->
+  <link rel="icon" href="data:," />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
   <header class="app-header">
     <h1 data-i18n="app_title">Générateur de Quiz</h1>
-    <nav class="app-toolbar">
-      <!-- Sélecteurs de langue/difficulté/nombre reliés à SettingsModel via UploadController -->
-      <label data-i18n="label_language">Langue</label>
-      <select id="select-language" aria-label="Langue"></select>
-
-      <label data-i18n="label_difficulty">Difficulté</label>
-      <select id="select-difficulty" aria-label="Difficulté"></select>
-
-      <label data-i18n="label_count">Questions</label>
-      <input id="input-count" type="number" min="1" max="20" value="10" />
-    </nav>
   </header>
 
   <main class="app-main">
 
     <!-- ================= ÉCRAN 1 : UPLOAD ================= -->
     <section id="screen-upload" class="screen" aria-labelledby="upload-title">
-      <h2 id="upload-title" data-i18n="upload_title">Importer un cours</h2>
+      <h2 id="upload-title" data-i18n="upload_title">Colle ton cours</h2>
 
-      <div class="upload-zone">
-        <label for="file-pdf" data-i18n="upload_pdf">Déposer un PDF</label>
-        <input id="file-pdf" type="file" accept="application/pdf" />
+      <div class="field">
+        <label for="textarea-source" data-i18n="upload_paste">Texte du cours</label>
+        <textarea id="textarea-source" rows="10"
+          data-i18n-placeholder="upload_placeholder"
+          placeholder="Colle ici le texte de ton cours…"></textarea>
+        <div class="counter-row">
+          <span id="char-counter" class="char-counter">0</span>
+          <span id="length-hint" class="length-hint" role="status"></span>
+        </div>
       </div>
 
-      <div class="upload-or" data-i18n="upload_or">— ou —</div>
+      <div class="options">
+        <div class="field">
+          <label for="select-count" data-i18n="label_count">Questions</label>
+          <select id="select-count">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="15">15</option>
+          </select>
+        </div>
 
-      <div class="upload-zone">
-        <label for="textarea-source" data-i18n="upload_paste">Coller le texte du cours</label>
-        <textarea id="textarea-source" rows="12"></textarea>
+        <div class="field">
+          <label for="select-difficulty" data-i18n="label_difficulty">Difficulté</label>
+          <select id="select-difficulty">
+            <option value="easy" data-i18n="diff_easy">Facile</option>
+            <option value="medium" selected data-i18n="diff_medium">Moyen</option>
+            <option value="hard" data-i18n="diff_hard">Difficile</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="select-language" data-i18n="label_language">Langue</label>
+          <select id="select-language">
+            <option value="auto" selected data-i18n="lang_auto">Auto</option>
+            <option value="fr" data-i18n="lang_fr">Français</option>
+            <option value="ar" data-i18n="lang_ar">Arabe</option>
+            <option value="en" data-i18n="lang_en">Anglais</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="input-access-code" data-i18n="label_access_code">Code d'accès</label>
+        <input id="input-access-code" type="password" autocomplete="off"
+          data-i18n-placeholder="access_placeholder" placeholder="Code d'accès" />
       </div>
 
       <p id="upload-error" class="error-message" role="alert" hidden></p>
-      <button id="btn-generate" type="button" data-i18n="btn_generate">Générer le quiz</button>
+
+      <button id="btn-generate" type="button" class="btn btn-primary"
+        data-i18n="btn_generate" disabled>Générer le quiz</button>
     </section>
 
-    <!-- ================= ÉCRAN 2 : QUIZ ================= -->
-    <section id="screen-quiz" class="screen" aria-labelledby="quiz-title" hidden>
-      <h2 id="quiz-title" data-i18n="quiz_title">Quiz</h2>
+    <!-- ================= ÉCRAN 2 : ATTENTE ================= -->
+    <section id="screen-loading" class="screen" aria-labelledby="loading-title" hidden>
+      <h2 id="loading-title" data-i18n="loading_title">Génération en cours…</h2>
 
-      <div class="quiz-progress">
-        <span id="quiz-index">1</span> / <span id="quiz-total">10</span>
-      </div>
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="progress-bar" aria-hidden="true"><span></span></div>
 
-      <!-- Zone remplie par QuizView à partir de la question courante -->
-      <article id="quiz-question" class="quiz-question"></article>
+      <ol class="loading-steps" id="loading-steps">
+        <li data-step="0" data-i18n="loading_step1">Préparation du texte</li>
+        <li data-step="1" data-i18n="loading_step2">Génération des questions</li>
+        <li data-step="2" data-i18n="loading_step3">Vérification des réponses</li>
+      </ol>
+    </section>
+
+    <!-- ================= ÉCRAN 3 : QUIZ ================= -->
+    <section id="screen-quiz" class="screen" aria-labelledby="quiz-heading" hidden>
+      <p class="quiz-progress"><span id="quiz-progress"></span></p>
+      <h2 id="quiz-heading" class="quiz-question" aria-live="polite"></h2>
+
       <ul id="quiz-choices" class="quiz-choices"></ul>
 
-      <!-- Zone flashcard, remplie par FlashcardView -->
-      <aside id="flashcard" class="flashcard" hidden></aside>
+      <!-- Bloc de feedback (caché jusqu'à la réponse) -->
+      <div id="quiz-feedback" class="quiz-feedback" hidden>
+        <p id="quiz-verdict" class="quiz-verdict"></p>
+        <p id="quiz-explanation" class="quiz-explanation"></p>
+        <!-- Point clé du projet : l'extrait du cours, mis en valeur -->
+        <blockquote class="quiz-source">
+          <span class="quiz-source-intro" data-i18n="source_intro">D'après ton cours :</span>
+          <span id="quiz-source-text" class="quiz-source-text"></span>
+        </blockquote>
+      </div>
 
       <div class="quiz-actions">
-        <button id="btn-prev" type="button" data-i18n="btn_prev">Précédent</button>
-        <button id="btn-next" type="button" data-i18n="btn_next">Suivant</button>
-        <button id="btn-finish" type="button" data-i18n="btn_finish">Terminer</button>
+        <button id="btn-next" type="button" class="btn btn-primary" data-i18n="btn_next" hidden>Suivant</button>
       </div>
     </section>
 
-    <!-- ================= ÉCRAN 3 : RÉSULTAT ================= -->
+    <!-- ================= ÉCRAN 4 : RÉSULTAT ================= -->
     <section id="screen-result" class="screen" aria-labelledby="result-title" hidden>
       <h2 id="result-title" data-i18n="result_title">Résultat</h2>
 
       <p class="result-score">
-        <span id="result-score">0</span> / <span id="result-total">0</span>
+        <strong id="result-score">0 / 0</strong>
+        <span id="result-percent" class="result-percent"></span>
       </p>
 
-      <!-- Récapitulatif question par question, rempli par ResultView -->
-      <ol id="result-review" class="result-review"></ol>
+      <h3 id="result-missed-title" class="result-missed-title" data-i18n="result_missed" hidden>
+        Questions à revoir
+      </h3>
+      <ol id="result-missed" class="result-missed"></ol>
 
-      <button id="btn-restart" type="button" data-i18n="btn_restart">Recommencer</button>
+      <div class="result-actions">
+        <button id="btn-replay-errors" type="button" class="btn" data-i18n="btn_replay_errors">Rejouer les erreurs</button>
+        <button id="btn-flashcards" type="button" class="btn" data-i18n="btn_flashcards">Voir les flashcards</button>
+        <button id="btn-new-quiz" type="button" class="btn btn-primary" data-i18n="btn_new_quiz">Nouveau quiz</button>
+      </div>
+    </section>
+
+    <!-- ================= ÉCRAN 5 : FLASHCARDS ================= -->
+    <section id="screen-flashcards" class="screen" aria-labelledby="flashcards-title" hidden>
+      <h2 id="flashcards-title" data-i18n="flashcards_title">Flashcards</h2>
+      <p class="flashcard-progress"><span id="flashcard-progress"></span></p>
+
+      <div id="flashcard-card" class="flashcard" role="button" tabindex="0"
+        aria-live="polite" data-face="front">
+        <div class="flashcard-face flashcard-front" id="flashcard-front"></div>
+        <div class="flashcard-face flashcard-back" id="flashcard-back"></div>
+        <span class="flashcard-hint" data-i18n="flashcard_hint">Touche la carte pour la retourner</span>
+      </div>
+
+      <div class="flashcard-actions">
+        <button id="btn-review" type="button" class="btn btn-review" data-i18n="btn_review">À revoir</button>
+        <button id="btn-known" type="button" class="btn btn-known" data-i18n="btn_known">Je savais</button>
+      </div>
+
+      <div id="flashcards-done" class="flashcards-done" hidden>
+        <p data-i18n="flashcards_done">Paquet terminé 🎉</p>
+        <button id="btn-flashcards-back" type="button" class="btn btn-primary" data-i18n="btn_back_result">Retour au résultat</button>
+      </div>
     </section>
 
   </main>
 
-  <!-- Point d'entrée unique. Charge et câble models/views/controllers. -->
+  <!-- Point d'entrée unique : câble Models, Views et Controllers. -->
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>

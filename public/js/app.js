@@ -1,50 +1,76 @@
 /**
  * app.js — Point d'entrée du front (SPA vanilla, ES modules).
  *
- * RÔLE : composition root de l'application. C'est le SEUL endroit où l'on
- * instancie et câble ensemble les Models, les Views et les Controllers.
+ * RÔLE : composition root. SEUL endroit où l'on instancie et câble les Models,
+ * les Views et les Controllers autour d'un EventBus partagé.
  *
- * RÈGLES D'ARCHITECTURE (MVC strict) rappelées ici et appliquées partout :
+ * RÈGLES D'ARCHITECTURE (MVC strict) :
  *   - Les Models ne touchent JAMAIS au DOM.
- *   - Les Views ne contiennent AUCUNE logique métier (ni score, ni validation).
+ *   - Les Views ne contiennent AUCUNE logique métier.
  *   - Les Controllers sont les SEULS à appeler les Services.
- *   - La communication Model -> View passe TOUJOURS par l'EventBus,
- *     jamais par un appel direct.
- *
- * FLUX DE CÂBLAGE :
- *   1. Créer un EventBus partagé.
- *   2. Instancier les Models (DocumentModel, QuizModel, SettingsModel) avec le bus.
- *   3. Instancier les Views (Upload, Quiz, Flashcard, Result) avec le bus + I18n.
- *   4. Instancier les Controllers (Upload, Quiz) avec models, views et services.
- *   5. Initialiser l'I18n et afficher l'écran d'upload.
+ *   - Model -> View passe TOUJOURS par l'EventBus.
  */
 
 import { EventBus } from "./services/EventBus.js";
 import { I18n } from "./services/I18n.js";
+import { ApiClient } from "./services/ApiClient.js";
+import { Validator } from "./services/Validator.js";
+import { LanguageDetector } from "./services/LanguageDetector.js";
+
 import { DocumentModel } from "./models/DocumentModel.js";
 import { QuizModel } from "./models/QuizModel.js";
 import { SettingsModel } from "./models/SettingsModel.js";
+
 import { UploadView } from "./views/UploadView.js";
+import { LoadingView } from "./views/LoadingView.js";
 import { QuizView } from "./views/QuizView.js";
-import { FlashcardView } from "./views/FlashcardView.js";
 import { ResultView } from "./views/ResultView.js";
+import { FlashcardView } from "./views/FlashcardView.js";
+
 import { UploadController } from "./controllers/UploadController.js";
 import { QuizController } from "./controllers/QuizController.js";
 
 /**
  * Amorce l'application une fois le DOM prêt.
- * Entrées : aucune.
- * Sorties : aucune (effets de bord : instanciation + rendu initial).
+ * @returns {void}
  */
 function bootstrap() {
-  // TODO: instancier l'EventBus partagé.
-  // TODO: instancier I18n et charger la langue par défaut.
-  // TODO: instancier les Models en leur passant le bus.
-  // TODO: instancier les Views en leur passant le bus (+ I18n).
-  // TODO: instancier les Services (ApiClient, PdfExtractor, Validator,
-  //       LanguageDetector) requis par les Controllers.
-  // TODO: instancier les Controllers en injectant models/views/services.
-  // TODO: afficher l'écran d'upload.
+  // 1. Bus partagé + services.
+  const bus = new EventBus();
+  const i18n = new I18n();
+  const apiClient = new ApiClient();
+  const validator = new Validator();
+  const languageDetector = new LanguageDetector();
+
+  // 2. Models (reçoivent le bus).
+  const documentModel = new DocumentModel(bus);
+  const quizModel = new QuizModel(bus);
+  const settingsModel = new SettingsModel(bus);
+
+  // 3. Views (reçoivent bus + i18n ; s'abonnent au bus dans leur constructeur).
+  /* eslint-disable no-new */
+  new UploadView(bus, i18n);
+  new LoadingView(bus, i18n);
+  new QuizView(bus, i18n);
+  new ResultView(bus, i18n);
+  new FlashcardView(bus, i18n);
+  /* eslint-enable no-new */
+
+  // 4. Controllers (injection des Models et Services).
+  new UploadController({
+    bus, documentModel, settingsModel, quizModel,
+    apiClient, validator, languageDetector, i18n,
+  });
+  new QuizController({ bus, quizModel });
+
+  // 5. État initial : langue par défaut, écran d'upload, compteur à zéro.
+  i18n.setLanguage("fr");
+  bus.publish("screen:show", { name: "upload" });
+  documentModel.setText(""); // rend le compteur/indice et garde le bouton désactivé
 }
 
-// TODO: appeler bootstrap() au chargement du DOM (DOMContentLoaded).
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootstrap);
+} else {
+  bootstrap();
+}

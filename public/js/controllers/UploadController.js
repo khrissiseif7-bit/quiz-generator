@@ -1,51 +1,114 @@
 /**
- * UploadController.js — Orchestration de l'écran d'import.
+ * UploadController.js — Orchestration de l'écran d'import et de la génération.
  *
- * COUCHE : Controller.
- * RÈGLES :
- *   - Les Controllers sont les SEULS à appeler les Services.
- *   - Le Controller écoute les intentions UI (via bus), invoque les Services
- *     (PdfExtractor, LanguageDetector, ApiClient, Validator), met à jour les
- *     Models, et laisse les Models notifier les Views via le bus.
- *   - Le Controller ne manipule PAS le DOM directement.
+ * COUCHE : Controller. SEUL habilité à appeler les Services (ApiClient,
+ * Validator, LanguageDetector, I18n). Écoute les intentions UI, met à jour les
+ * Models, pilote les transitions d'écran et la gestion d'erreurs par code.
+ * Ne manipule PAS le DOM directement.
  */
 export class UploadController {
   /**
-   * @param {object} deps - Dépendances injectées par app.js.
+   * @param {object} deps
    * @param {import("../services/EventBus.js").EventBus} deps.bus
    * @param {import("../models/DocumentModel.js").DocumentModel} deps.documentModel
    * @param {import("../models/SettingsModel.js").SettingsModel} deps.settingsModel
    * @param {import("../models/QuizModel.js").QuizModel} deps.quizModel
-   * @param {import("../services/PdfExtractor.js").PdfExtractor} deps.pdfExtractor
-   * @param {import("../services/LanguageDetector.js").LanguageDetector} deps.languageDetector
    * @param {import("../services/ApiClient.js").ApiClient} deps.apiClient
    * @param {import("../services/Validator.js").Validator} deps.validator
+   * @param {import("../services/LanguageDetector.js").LanguageDetector} deps.languageDetector
+   * @param {import("../services/I18n.js").I18n} deps.i18n
    */
   constructor(deps) {
-    // TODO: mémoriser les dépendances.
-    // TODO: s'abonner aux intentions UI : "ui:file-selected", "ui:generate-requested",
-    //       et aux changements de réglages issus de la barre d'outils.
+    Object.assign(this, deps);
+
+    this.bus.subscribe("ui:text-changed", ({ text }) => {
+      this.documentModel.setText(text);
+    });
+
+    this.bus.subscribe("ui:settings-changed", ({ count, difficulty, language }) => {
+      this.settingsModel.setCount(count);
+      this.settingsModel.setDifficulty(difficulty);
+      this.settingsModel.setLanguage(language);
+      // Un choix de langue explicite bascule aussi l'interface (et le sens RTL).
+      if (language !== "auto") {
+        this.i18n.setLanguage(language);
+        // Re-publier l'état du texte pour re-traduire compteur/indice.
+        this.documentModel.setText(this.documentModel.getText());
+      }
+    });
+
+    this.bus.subscribe("ui:access-code-changed", ({ code }) => {
+      this.settingsModel.setAccessCode(code);
+    });
+
+    this.bus.subscribe("ui:generate", () => this.handleGenerate());
   }
 
   /**
-   * Gère un PDF déposé : extrait le texte via PdfExtractor puis alimente le DocumentModel.
-   * @param {File} file - Fichier PDF sélectionné.
-   * @returns {Promise<void>}
-   */
-  async handleFile(file) {
-    // TODO: appeler pdfExtractor.extract(file) -> {text, pages}, puis documentModel.setSource(...).
-    // TODO: détecter la langue via languageDetector et documentModel.setLanguage(...).
-  }
-
-  /**
-   * Gère la demande de génération : construit la requête, appelle l'API, valide, charge le quiz.
+   * Lance la génération : écran d'attente animé, appel API, validation, puis
+   * chargement du quiz ou message d'erreur clair.
    * @returns {Promise<void>}
    */
   async handleGenerate() {
-    // TODO: lire texte (DocumentModel) + réglages (SettingsModel).
-    // TODO: appeler apiClient.generateQuiz(payload).
-    // TODO: valider la réponse via validator.validate(...) (conforme au contrat).
-    // TODO: en cas de succès, quizModel.load(quiz) puis publier une transition d'écran.
-    // TODO: en cas d'erreur (401/413/429/502/validation), publier "app:error" avec message i18n.
+    const text = this.documentModel.getText();
+
+    // Interface dans la langue probable pendant l'attente.
+    const langueUi = this.settingsModel.language !== "auto"
+      ? this.settingsModel.language
+      : this.languageDetector.detect(text);
+    this.i18n.setLanguage(langueUi);
+
+    this.bus.publish("screen:show", { name: "loading" });
+    this.bus.publish("app:loading-step", { step: 0 });
+    await pause(300);
+    this.bus.publish("app:loading-step", { step: 1 });
+
+    try {
+      const payload = { text, ...this.settingsModel.toRequest() };
+      const donnees = await this.apiClient.generateQuiz(payload, this.settingsModel.getAccessCode());
+
+      this.bus.publish("app:loading-step", { step: 2 });
+      const { valid } = this.validator.validate(donnees);
+      if (!valid) throw makeError(0, "INVALID_RESPONSE");
+      await pause(400); // laisse voir l'étape « vérification »
+
+      // Langue finale = celle réellement produite par le serveur.
+      this.i18n.setLanguage(donnees.language);
+      this.bus.publish("screen:show", { name: "quiz" });
+      this.quizModel.load(donnees);
+    } catch (err) {
+      this.bus.publish("screen:show", { name: "upload" });
+      this.bus.publish("app:error", { message: this._message(err) });
+    }
   }
+
+  /**
+   * Traduit une erreur normalisée d'ApiClient en message clair (par code).
+   * @param {{httpStatus:number, backendCode:string}} err
+   * @returns {string}
+   */
+  _message(err) {
+    const s = err.httpStatus;
+    const code = err.backendCode;
+    if (s === 401) return this.i18n.t("err_401");
+    if (s === 413) return this.i18n.t("err_413");
+    if (s === 429) return this.i18n.t("err_429");
+    if (s === 400) return code === "TEXT_TOO_SHORT" ? this.i18n.t("err_400_short") : this.i18n.t("err_400");
+    if (s === 502 || s === 503) return this.i18n.t("err_502");
+    if (s === 0 && (code === "TIMEOUT" || code === "NETWORK")) return this.i18n.t("err_network");
+    return this.i18n.t("err_generic");
+  }
+}
+
+/** Petite pause asynchrone (pour rythmer l'écran d'attente). */
+function pause(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Erreur locale au même format que celles d'ApiClient. */
+function makeError(httpStatus, backendCode) {
+  const err = new Error(backendCode);
+  err.httpStatus = httpStatus;
+  err.backendCode = backendCode;
+  return err;
 }

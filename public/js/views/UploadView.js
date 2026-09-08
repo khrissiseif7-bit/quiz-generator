@@ -1,44 +1,92 @@
 /**
- * UploadView.js — Vue de l'écran d'import (écran 1).
+ * UploadView.js — Vue de l'écran d'import (collage de texte + options + code).
  *
- * COUCHE : View.
- * RÈGLE : une View ne contient AUCUNE logique métier (ni score, ni validation,
- * ni appel de Service). Elle se limite à :
- *   - lire/écrire le DOM de #screen-upload,
- *   - émettre des événements d'intention utilisateur sur l'EventBus,
- *   - réagir aux événements de Models pour se redessiner.
- * Elle ne connaît NI les Models NI les Services directement : tout passe par le bus.
+ * COUCHE : View. AUCUNE logique métier (ni validation, ni appel de service).
+ * Elle lit/écrit le DOM de #screen-upload, émet des INTENTIONS sur le bus, et
+ * réagit aux événements des Models (document:changed) et de l'app (app:error).
+ * Les seuils de longueur sont calculés par DocumentModel : ici on ne fait
+ * qu'AFFICHER les indicateurs (compteur, message, bouton activé/désactivé).
  */
+import { MAX_LEN } from "../models/DocumentModel.js";
+
 export class UploadView {
   /**
-   * @param {import("../services/EventBus.js").EventBus} bus - Bus d'événements partagé.
-   * @param {import("../services/I18n.js").I18n} i18n - Service de traduction (affichage seul).
+   * @param {import("../services/EventBus.js").EventBus} bus
+   * @param {import("../services/I18n.js").I18n} i18n
    */
   constructor(bus, i18n) {
-    // TODO: mémoriser bus et i18n, récupérer les références DOM (#screen-upload,
-    //       #file-pdf, #textarea-source, #btn-generate, #upload-error).
-    // TODO: brancher les écouteurs DOM qui PUBLIENT des intentions, ex :
-    //       - "ui:file-selected" (fichier PDF choisi)
-    //       - "ui:generate-requested" (clic sur « Générer »)
-    // TODO: s'abonner aux événements du bus pertinents (ex "app:error").
-  }
+    this.bus = bus;
+    this.i18n = i18n;
 
-  /** Affiche cet écran. @returns {void} */
-  show() {
-    // TODO: retirer [hidden] de #screen-upload, le poser sur les autres écrans.
-  }
+    this.section = document.getElementById("screen-upload");
+    this.textarea = document.getElementById("textarea-source");
+    this.counter = document.getElementById("char-counter");
+    this.hint = document.getElementById("length-hint");
+    this.selCount = document.getElementById("select-count");
+    this.selDifficulty = document.getElementById("select-difficulty");
+    this.selLanguage = document.getElementById("select-language");
+    this.inputCode = document.getElementById("input-access-code");
+    this.error = document.getElementById("upload-error");
+    this.btnGenerate = document.getElementById("btn-generate");
 
-  /** Masque cet écran. @returns {void} */
-  hide() {
-    // TODO: poser [hidden] sur #screen-upload.
+    // --- Intentions utilisateur (DOM -> bus) ---
+    this.textarea.addEventListener("input", () => {
+      this.bus.publish("ui:text-changed", { text: this.textarea.value });
+    });
+    const emettreReglages = () => {
+      this.bus.publish("ui:settings-changed", {
+        count: this.selCount.value,
+        difficulty: this.selDifficulty.value,
+        language: this.selLanguage.value,
+      });
+    };
+    this.selCount.addEventListener("change", emettreReglages);
+    this.selDifficulty.addEventListener("change", emettreReglages);
+    this.selLanguage.addEventListener("change", emettreReglages);
+    this.inputCode.addEventListener("input", () => {
+      this.bus.publish("ui:access-code-changed", { code: this.inputCode.value });
+    });
+    this.btnGenerate.addEventListener("click", () => {
+      this.bus.publish("ui:generate", {});
+    });
+
+    // --- Réactions aux événements ---
+    this.bus.subscribe("document:changed", (e) => this._renderCounter(e));
+    this.bus.subscribe("app:error", ({ message }) => this._showError(message));
+    this.bus.subscribe("screen:show", ({ name }) => {
+      this.section.hidden = name !== "upload";
+      if (name === "loading") this._hideError(); // nouvel essai en cours
+    });
+    // Quand la langue de l'interface change, on redemande un rendu des libellés
+    // dynamiques (compteur/indice) via le contrôleur (qui re-publie l'état).
   }
 
   /**
-   * Affiche un message d'erreur (texte déjà traduit fourni par le Controller).
-   * @param {string} message - Message à afficher.
-   * @returns {void}
+   * Met à jour le compteur, l'indice de longueur et l'état du bouton.
+   * @param {{length:number, tooShort:boolean, tooLong:boolean, valid:boolean, manque:number}} e
    */
-  showError(message) {
-    // TODO: écrire le message dans #upload-error et le rendre visible.
+  _renderCounter(e) {
+    this.counter.textContent = this.i18n.t("counter", { n: e.length });
+    if (e.tooShort) {
+      this.hint.textContent = this.i18n.t("hint_too_short", { n: e.manque });
+      this.hint.classList.remove("ok");
+    } else if (e.tooLong) {
+      this.hint.textContent = this.i18n.t("hint_too_long", { max: MAX_LEN });
+      this.hint.classList.remove("ok");
+    } else {
+      this.hint.textContent = this.i18n.t("hint_ok");
+      this.hint.classList.add("ok");
+    }
+    this.btnGenerate.disabled = !e.valid;
+  }
+
+  _showError(message) {
+    this.error.textContent = message;
+    this.error.hidden = false;
+  }
+
+  _hideError() {
+    this.error.hidden = true;
+    this.error.textContent = "";
   }
 }

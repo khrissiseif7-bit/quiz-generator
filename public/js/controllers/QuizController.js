@@ -1,48 +1,47 @@
 /**
- * QuizController.js — Orchestration du déroulé du quiz et du résultat.
+ * QuizController.js — Orchestration du déroulé du quiz, du résultat et des flashcards.
  *
- * COUCHE : Controller.
- * RÈGLES :
- *   - Seul le Controller pilote la logique de navigation/scoring en déléguant
- *     au QuizModel (le Model calcule, le Controller coordonne).
- *   - Écoute les intentions UI via le bus ; ne touche pas au DOM.
+ * COUCHE : Controller. Coordonne en délégant la logique au QuizModel (le Model
+ * calcule, le Controller pilote navigation et transitions d'écran). Ne touche
+ * pas au DOM.
  */
 export class QuizController {
   /**
-   * @param {object} deps - Dépendances injectées par app.js.
+   * @param {object} deps
    * @param {import("../services/EventBus.js").EventBus} deps.bus
    * @param {import("../models/QuizModel.js").QuizModel} deps.quizModel
    */
   constructor(deps) {
-    // TODO: mémoriser les dépendances.
-    // TODO: s'abonner aux intentions UI : "ui:answer-selected", "ui:nav",
-    //       "ui:finish-requested", "ui:restart-requested".
-  }
+    this.bus = deps.bus;
+    this.quizModel = deps.quizModel;
 
-  /**
-   * Enregistre la réponse choisie dans le Model.
-   * @param {string} questionId - Identifiant de la question.
-   * @param {number} choiceIndex - Index (0..3) sélectionné.
-   * @returns {void}
-   */
-  handleAnswer(questionId, choiceIndex) {
-    // TODO: appeler quizModel.answer(questionId, choiceIndex).
-  }
+    // Intentions de jeu.
+    this.bus.subscribe("ui:answer", ({ choiceIndex }) => this.quizModel.answer(choiceIndex));
+    this.bus.subscribe("ui:next", () => this.quizModel.next());
 
-  /**
-   * Navigue entre les questions.
-   * @param {number} delta - +1 (suivant) ou -1 (précédent).
-   * @returns {void}
-   */
-  handleNavigate(delta) {
-    // TODO: appeler quizModel.move(delta).
-  }
+    // Fin du quiz -> écran résultat (le rendu est fait par ResultView).
+    this.bus.subscribe("quiz:finished", () => {
+      this.bus.publish("screen:show", { name: "result" });
+    });
 
-  /**
-   * Termine le quiz : déclenche le calcul du score et la transition vers l'écran résultat.
-   * @returns {void}
-   */
-  handleFinish() {
-    // TODO: quizModel.computeScore(), puis publier "quiz:finished" avec le résultat.
+    // Actions de l'écran résultat.
+    this.bus.subscribe("ui:replay-errors", () => {
+      if (this.quizModel.replayErrors()) {
+        this.bus.publish("screen:show", { name: "quiz" });
+      }
+    });
+    this.bus.subscribe("ui:show-flashcards", () => {
+      this.bus.publish("screen:show", { name: "flashcards" });
+      this.quizModel.startFlashcards();
+    });
+    this.bus.subscribe("ui:new-quiz", () => {
+      this.bus.publish("screen:show", { name: "upload" });
+    });
+
+    // Actions de l'écran flashcards.
+    this.bus.subscribe("ui:flashcard-mark", ({ known }) => this.quizModel.markFlashcard(known));
+    this.bus.subscribe("ui:back-result", () => {
+      this.bus.publish("screen:show", { name: "result" });
+    });
   }
 }

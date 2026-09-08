@@ -2,19 +2,38 @@
  * LanguageDetector.js — Détection de la langue du texte source (fr / ar / en).
  *
  * COUCHE : Service (appelé uniquement par un Controller).
- * RÔLE : deviner la langue du cours pour préremplir SettingsModel et piloter
- * l'I18n (dont la bascule dir=rtl pour l'arabe). Heuristique légère, pas de
- * dépendance externe attendue.
+ * RÔLE : quand l'utilisateur choisit la langue « auto », deviner la langue pour
+ * régler l'interface (dont la bascule dir=rtl pour l'arabe) sans attendre la
+ * réponse du serveur. Heuristique légère, sans dépendance.
+ * NB : la langue FINALE du quiz reste celle renvoyée par le serveur.
  */
+
+const MOTS_FR = ["le", "la", "les", "de", "des", "un", "une", "et", "est", "en",
+  "que", "pour", "dans", "qui", "ne", "pas", "sur", "au", "du", "ce"];
+const MOTS_EN = ["the", "of", "and", "to", "in", "a", "is", "that", "it", "for",
+  "on", "as", "with", "are", "be", "this", "by", "an", "or", "from"];
+
 export class LanguageDetector {
   /**
    * Détecte la langue dominante d'un texte.
-   * @param {string} text - Texte source à analyser.
-   * @returns {"fr"|"ar"|"en"} Code langue détecté (valeur par défaut à définir).
+   * @param {string} text
+   * @returns {"fr"|"ar"|"en"} Code langue (défaut "fr").
    */
   detect(text) {
-    // TODO: repérer l'alphabet arabe (plage Unicode) -> "ar".
-    // TODO: sinon, distinguer fr/en (mots outils fréquents, diacritiques) -> "fr" | "en".
-    // TODO: retourner un code parmi {fr, ar, en}.
+    if (!text) return "fr";
+
+    // 1) Arabe : plus de 15 % de lettres arabes -> "ar".
+    const lettres = text.replace(/[^\p{L}]/gu, "");
+    const arabes = text.match(/[؀-ۿ]/g) || [];
+    if (lettres.length > 0 && arabes.length / lettres.length > 0.15) return "ar";
+
+    // 2) Français vs anglais : comptage de mots vides.
+    const mots = text.toLowerCase().match(/[a-zàâäéèêëïîôöùûüç]+/g) || [];
+    let fr = 0, en = 0;
+    for (const mot of mots) {
+      if (MOTS_FR.includes(mot)) fr++;
+      if (MOTS_EN.includes(mot)) en++;
+    }
+    return en > fr ? "en" : "fr";
   }
 }

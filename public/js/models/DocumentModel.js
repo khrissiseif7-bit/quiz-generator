@@ -1,55 +1,47 @@
 /**
- * DocumentModel.js — État du document source (le cours).
+ * DocumentModel.js — État du document source (le cours collé).
  *
- * COUCHE : Model.
- * RÈGLE : un Model ne touche JAMAIS au DOM. Il notifie ses changements
- * uniquement via l'EventBus (Model -> View passe par le bus).
- *
- * RESPONSABILITÉ : mémoriser le texte source, les pages extraites d'un PDF
- * et la langue détectée. Aucune extraction ni détection ici : ces calculs
- * appartiennent aux Services (PdfExtractor, LanguageDetector), appelés par
- * les Controllers, qui déposent ensuite le résultat dans ce Model.
+ * COUCHE : Model. Ne touche JAMAIS au DOM ; notifie via l'EventBus.
+ * RESPONSABILITÉ : mémoriser le texte source et calculer sa VALIDITÉ de taille
+ * (règle métier : min 300, max MAX_TEXT_LENGTH). La View ne fait qu'afficher
+ * les indicateurs calculés ici.
  */
+
+// Bornes de taille. MIN reflète le seuil serveur (limits.js) ; MAX reflète la
+// valeur par défaut de MAX_TEXT_LENGTH côté serveur.
+export const MIN_LEN = 300;
+export const MAX_LEN = 50000;
+
 export class DocumentModel {
   /**
-   * @param {import("../services/EventBus.js").EventBus} bus - Bus d'événements partagé.
+   * @param {import("../services/EventBus.js").EventBus} bus
    */
   constructor(bus) {
-    // TODO: mémoriser le bus.
-    // TODO: initialiser l'état : text (string), pages (Array<{page:number,text:string}>),
-    //       language (null | "fr" | "ar" | "en").
+    this.bus = bus;
+    this.text = "";
   }
 
   /**
-   * Définit le texte source et les pages, puis publie le changement.
-   * @param {string} text - Texte brut complet du cours.
-   * @param {Array<{page:number, text:string}>} [pages] - Pages (si issu d'un PDF).
+   * Définit le texte source et publie l'état (longueur + validité).
+   * @param {string} text
    * @returns {void}
    */
-  setSource(text, pages) {
-    // TODO: stocker text et pages, publier "document:changed" sur le bus.
+  setText(text) {
+    this.text = text || "";
+    const length = this.text.trim().length;
+    const tooShort = length < MIN_LEN;
+    const tooLong = length > MAX_LEN;
+    this.bus.publish("document:changed", {
+      length,
+      tooShort,
+      tooLong,
+      valid: !tooShort && !tooLong,
+      manque: tooShort ? MIN_LEN - length : 0, // caractères manquants
+    });
   }
 
-  /**
-   * Enregistre la langue détectée et publie le changement.
-   * @param {"fr"|"ar"|"en"} language - Code langue détecté.
-   * @returns {void}
-   */
-  setLanguage(language) {
-    // TODO: stocker language, publier "document:language" sur le bus.
-  }
-
-  /**
-   * @returns {string} Le texte source courant (vide si aucun).
-   */
+  /** @returns {string} Le texte source courant. */
   getText() {
-    // TODO: retourner le texte source.
-  }
-
-  /**
-   * @returns {Array<{page:number, text:string}>} Les pages extraites (vide si aucune).
-   */
-  getPages() {
-    // TODO: retourner les pages.
+    return this.text;
   }
 }

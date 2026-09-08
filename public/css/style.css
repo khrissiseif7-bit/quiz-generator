@@ -1,69 +1,336 @@
 /*
- * style.css — Feuille de style globale.
+ * style.css — Feuille de style globale (sobre, lisible, mobile d'abord).
  *
- * Contenu prévu (pas de logique, uniquement présentation) :
- *   1. Variables CSS (thème, espacements, couleurs)
- *   2. Reset minimal
- *   3. Support de la mise en page RTL via [dir="rtl"]
- *   4. Styles des 3 écrans et composants
+ * Présentation uniquement (aucune logique). Organisation :
+ *   1. Variables CSS   2. Reset   3. Layout & écrans
+ *   4. Formulaire (upload)   5. Attente   6. Quiz   7. Résultat
+ *   8. Flashcards   9. Utilitaires & erreurs   10. RTL   11. Responsive
  *
- * NB : la bascule dir="rtl" est effectuée en JS par I18n.js sur <html>.
- *      Le CSS ci-dessous se contente d'y RÉAGIR.
+ * La bascule dir="rtl" est faite en JS (I18n.js) sur <html> ; le CSS y réagit
+ * via des propriétés logiques (margin-inline, text-align) et le sélecteur
+ * [dir="rtl"].
  */
 
-/* ============ 1. Variables CSS ============ */
+/* ============ 1. Variables ============ */
 :root {
-  --color-bg: #ffffff;
-  --color-text: #1a1a1a;
-  --color-primary: #2563eb;
-  --color-error: #dc2626;
+  --color-bg: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-text: #1a1a2e;
   --color-muted: #6b7280;
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
+  --color-correct: #16a34a;
+  --color-correct-bg: #dcfce7;
+  --color-wrong: #dc2626;
+  --color-wrong-bg: #fee2e2;
+  --color-accent: #7c3aed;
+  --color-border: #e5e7eb;
+
   --space-1: 0.5rem;
   --space-2: 1rem;
   --space-3: 1.5rem;
-  --radius: 8px;
+  --space-4: 2rem;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
   --font-base: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
 }
 
-/* ============ 2. Reset minimal ============ */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* ============ 2. Reset ============ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: var(--font-base);
   color: var(--color-text);
   background: var(--color-bg);
-  line-height: 1.5;
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+
+[hidden] { display: none !important; }
+
+/* ============ 3. Layout & écrans ============ */
+.app-header {
+  background: var(--color-primary);
+  color: #fff;
+  padding: var(--space-2);
+  text-align: center;
+}
+.app-header h1 { font-size: 1.25rem; font-weight: 700; }
+
+.app-main {
+  max-width: 720px;
+  margin: 0 auto;
   padding: var(--space-2);
 }
 
-/* ============ 3. Support RTL ============ */
-/* TODO: styles réagissant à l'arabe (alignement, sens des marges logiques). */
-[dir="rtl"] {
-  text-align: right;
-}
-
-[dir="rtl"] .app-toolbar {
-  /* Utiliser des propriétés logiques (margin-inline, etc.) plutôt que left/right. */
-}
-
-/* ============ 4. Écrans et composants ============ */
-/* TODO: styliser .app-header, .app-toolbar, .screen, .upload-zone,
-   .quiz-question, .quiz-choices, .flashcard, .result-review. */
-
 .screen {
-  /* Un seul écran visible : l'attribut [hidden] est géré par les Views. */
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-3);
+  margin-top: var(--space-2);
+}
+.screen > h2 { font-size: 1.15rem; margin-bottom: var(--space-2); }
+
+/* ============ 4. Formulaire (upload) ============ */
+.field { margin-bottom: var(--space-2); }
+.field > label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  margin-bottom: var(--space-1);
 }
 
+textarea, select, input[type="password"], input[type="text"] {
+  width: 100%;
+  font: inherit;
+  color: var(--color-text);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.75rem;
+}
+textarea { resize: vertical; min-height: 8rem; }
+textarea:focus, select:focus, input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+  border-color: var(--color-primary);
+}
+
+.counter-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-1);
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+}
+.char-counter { color: var(--color-muted); }
+.length-hint { color: var(--color-wrong); font-weight: 600; text-align: end; }
+.length-hint.ok { color: var(--color-correct); }
+
+/* Grille d'options : empilée sur mobile, en ligne dès qu'il y a la place. */
+.options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+}
+
+/* ============ Boutons ============ */
+.btn {
+  display: inline-block;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  padding: 0.7rem 1rem;
+  transition: background 0.15s, opacity 0.15s;
+}
+.btn:hover { background: #f3f4f6; }
+.btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+  width: 100%;
+}
+.btn-primary:hover { background: var(--color-primary-dark); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ============ 5. Attente ============ */
+#screen-loading { text-align: center; }
+
+.spinner {
+  width: 48px; height: 48px;
+  margin: var(--space-3) auto var(--space-2);
+  border: 4px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Barre de progression indéterminée : bouge en continu (jamais figée). */
+.progress-bar {
+  position: relative;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: var(--space-3);
+}
+.progress-bar > span {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 40%;
+  background: var(--color-primary);
+  border-radius: 999px;
+  animation: slide 1.3s ease-in-out infinite;
+}
+@keyframes slide {
+  0%   { inset-inline-start: -40%; }
+  100% { inset-inline-start: 100%; }
+}
+
+.loading-steps { list-style: none; text-align: start; max-width: 20rem; margin: 0 auto; }
+.loading-steps li {
+  padding: 0.5rem 0 0.5rem 1.75rem;
+  position: relative;
+  color: var(--color-muted);
+  transition: color 0.2s;
+}
+.loading-steps li::before {
+  content: "○";
+  position: absolute;
+  inset-inline-start: 0;
+}
+.loading-steps li.active { color: var(--color-text); font-weight: 600; }
+.loading-steps li.active::before { content: "◉"; color: var(--color-primary); }
+.loading-steps li.done { color: var(--color-correct); }
+.loading-steps li.done::before { content: "✓"; color: var(--color-correct); }
+
+/* ============ 6. Quiz ============ */
+.quiz-progress { font-size: 0.85rem; color: var(--color-muted); margin-bottom: var(--space-1); }
+.quiz-question { font-size: 1.15rem; line-height: 1.4; margin-bottom: var(--space-3); }
+
+.quiz-choices { list-style: none; display: flex; flex-direction: column; gap: var(--space-1); }
+.choice {
+  width: 100%;
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+  background: #fff;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 1rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+.choice:hover:not(:disabled) { border-color: var(--color-primary); background: #f8faff; }
+.choice:disabled { cursor: default; }
+/* États après réponse */
+.choice.is-correct {
+  border-color: var(--color-correct);
+  background: var(--color-correct-bg);
+  color: #065f46;
+  font-weight: 600;
+}
+.choice.is-wrong {
+  border-color: var(--color-wrong);
+  background: var(--color-wrong-bg);
+  color: #991b1b;
+  font-weight: 600;
+}
+
+/* Feedback : explication puis extrait source */
+.quiz-feedback { margin-top: var(--space-3); }
+.quiz-verdict { font-weight: 700; margin-bottom: var(--space-1); }
+.quiz-verdict.correct { color: var(--color-correct); }
+.quiz-verdict.wrong { color: var(--color-wrong); }
+.quiz-explanation { margin-bottom: var(--space-2); }
+
+/* Point clé du projet : l'extrait du cours, en bloc citation distinct. */
+.quiz-source {
+  background: #f5f3ff;
+  border-inline-start: 4px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+}
+.quiz-source-intro {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.35rem;
+}
+.quiz-source-text { font-style: italic; }
+.quiz-source-text::before { content: "« "; }
+.quiz-source-text::after { content: " »"; }
+
+.quiz-actions { margin-top: var(--space-3); }
+
+/* ============ 7. Résultat ============ */
+.result-score { text-align: center; margin-bottom: var(--space-3); }
+.result-score strong { font-size: 2rem; display: block; }
+.result-percent { color: var(--color-muted); }
+
+.result-missed-title { font-size: 1rem; margin-bottom: var(--space-1); }
+.result-missed { padding-inline-start: 1.25rem; margin-bottom: var(--space-3); }
+.result-missed li { margin-bottom: var(--space-1); }
+.result-missed .correct-answer { color: var(--color-correct); font-weight: 600; }
+
+.result-actions { display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* ============ 8. Flashcards ============ */
+#screen-flashcards { text-align: center; }
+.flashcard-progress { font-size: 0.85rem; color: var(--color-muted); margin-bottom: var(--space-2); }
+
+.flashcard {
+  position: relative;
+  min-height: 11rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  font-size: 1.1rem;
+}
+.flashcard-face { display: none; }
+.flashcard[data-face="front"] .flashcard-front { display: block; }
+.flashcard[data-face="back"] .flashcard-back { display: block; }
+.flashcard[data-face="back"] { background: #f5f3ff; border-color: var(--color-accent); }
+.flashcard-hint {
+  position: absolute;
+  inset-block-end: 0.5rem;
+  inset-inline: 0;
+  font-size: 0.7rem;
+  color: var(--color-muted);
+}
+
+.flashcard-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+.flashcard-actions .btn { flex: 1; }
+.btn-known { border-color: var(--color-correct); color: var(--color-correct); }
+.btn-known:hover { background: var(--color-correct-bg); }
+.btn-review { border-color: var(--color-wrong); color: var(--color-wrong); }
+.btn-review:hover { background: var(--color-wrong-bg); }
+
+.flashcards-done { margin-top: var(--space-2); }
+.flashcards-done p { margin-bottom: var(--space-2); font-weight: 600; }
+
+/* ============ 9. Erreurs ============ */
 .error-message {
-  color: var(--color-error);
+  background: var(--color-wrong-bg);
+  color: #991b1b;
+  border: 1px solid var(--color-wrong);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+  margin-bottom: var(--space-2);
+  font-size: 0.9rem;
 }
 
-[hidden] {
-  display: none !important;
+/* ============ 10. RTL ============ */
+[dir="rtl"] .loading-steps,
+[dir="rtl"] .result-missed { text-align: right; }
+/* Les bordures/marges utilisent déjà des propriétés logiques (inline-start,
+   margin-inline…), donc l'essentiel du RTL est géré automatiquement. */
+
+/* ============ 11. Responsive ============ */
+@media (min-width: 560px) {
+  .app-header h1 { font-size: 1.4rem; }
+  /* Options en trois colonnes quand l'écran est assez large. */
+  .options { grid-template-columns: repeat(3, 1fr); }
+  .result-actions { flex-direction: row; }
+  .result-actions .btn { flex: 1; }
 }
