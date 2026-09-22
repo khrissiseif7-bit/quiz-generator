@@ -26,10 +26,12 @@ export class ResultView {
     this.btnReplay = document.getElementById("btn-replay-errors");
     this.btnFlashcards = document.getElementById("btn-flashcards");
     this.btnNewQuiz = document.getElementById("btn-new-quiz");
+    this.btnHomeReset = document.getElementById("btn-home-reset");
 
     this.btnReplay.addEventListener("click", () => this.bus.publish("ui:replay-errors", {}));
     this.btnFlashcards.addEventListener("click", () => this.bus.publish("ui:show-flashcards", {}));
     this.btnNewQuiz.addEventListener("click", () => this.bus.publish("ui:new-quiz", {}));
+    this.btnHomeReset.addEventListener("click", () => this.bus.publish("ui:home-reset", {}));
 
     this.bus.subscribe("screen:show", ({ name }) => {
       this.section.hidden = name !== "result";

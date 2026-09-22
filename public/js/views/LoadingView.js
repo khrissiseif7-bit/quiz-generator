@@ -42,9 +42,9 @@ export class LoadingView {
    */
   _startEta(seconds) {
     this._stopEta();
-    // Fourchette : ~[0,75×, 1,35×] de l'estimation centrale (variance observée).
-    const lo = Math.max(1, Math.round(seconds * 0.75));
-    const hi = Math.max(lo + 2, Math.round(seconds * 1.35));
+    // Fourchette : ~[0,80×, 1,40×] de l'estimation centrale (données HTTP réelles).
+    const lo = Math.max(1, Math.round(seconds * 0.80));
+    const hi = Math.max(lo + 2, Math.round(seconds * 1.40));
     this.eta.textContent = this.i18n.t("loading_eta_range", { range: this.i18n.isoLTR(`${lo}–${hi}`) });
 
     // Barre qui se remplit sur la BORNE HAUTE, jusqu'à 92 % : on n'atteint le

@@ -51,6 +51,7 @@ export class UploadController {
     this.bus.subscribe("ui:pdf-selected", ({ file }) => this.handlePdf(file));
     this.bus.subscribe("ui:reset", () => this.handleReset());
     this.bus.subscribe("ui:cancel", () => this.handleCancel());
+    this.bus.subscribe("ui:home-reset", () => this.handleHomeReset());
 
     // Options « cours » (cases à cocher) -> Model.
     this.bus.subscribe("ui:course-options-changed", ({ attach, storeText }) => {
@@ -92,17 +93,37 @@ export class UploadController {
   }
 
   /**
-   * Réinitialise le texte source (bouton Réinitialiser). Vide le Model puis
-   * demande à la View d'effacer son DOM (textarea, résumé, input fichier, erreur).
-   * NE touche NI au code d'accès NI aux options (langue/difficulté/nombre).
+   * Réinitialise l'écran d'upload à l'état du premier chargement : texte, PDF,
+   * réglages (difficulté, langue, nombre de questions), cases à cocher, code
+   * d'accès. Appelé par le bouton « Réinitialiser » et par handleHomeReset().
    * @returns {void}
    */
   handleReset() {
-    this.documentModel.setText("");    // compteur à 0 + validité recalculée
-    this.bus.publish("upload:cleared"); // la View efface ses éléments DOM
-    // #9 : le nombre de questions revient sur la valeur RECOMMANDÉE (et non sur
-    // un choix figé précédent). La View re-positionne le sélecteur.
+    this.documentModel.setText("");
+    // Réglages remis à leur valeur par défaut.
+    this.settingsModel.setDifficulty("medium");
+    this.settingsModel.setLanguage("auto");
+    this.settingsModel.setAttachToCourses(true);
+    this.settingsModel.setStoreCourseText(true);
+    this.settingsModel.setAccessCode("");
+    // Interface en français (valeur par défaut, détection auto sur texte vide).
+    this.i18n.setLanguage("fr");
+    // Supprime la clé d'accès de sessionStorage si elle y avait été copiée.
+    try { sessionStorage.removeItem("accessCode"); } catch { /* ignore */ }
+    this.bus.publish("upload:cleared");
     this.bus.publish("app:recommendation", { count: this.settingsModel.recommendCount("") });
+  }
+
+  /**
+   * Réinitialisation complète depuis l'écran de résultat (bouton « Revenir à
+   * l'accueil ») : efface en plus le QuizModel (quiz, réponses, état de jeu).
+   * Aucune trace du quiz précédent ne subsiste en mémoire.
+   * @returns {void}
+   */
+  handleHomeReset() {
+    this.quizModel.reset();
+    this.handleReset();
+    this.bus.publish("screen:show", { name: "upload" });
   }
 
   /**
@@ -178,10 +199,11 @@ export class UploadController {
     this.i18n.setLanguage(langueUi);
 
     this.bus.publish("screen:show", { name: "loading" });
-    // #4 : estimation recalibrée sur les mesures réelles (mesures.md). La durée
-    // dépend SURTOUT du nombre de questions (~0,6 s/question) ; le texte a un
-    // effet mineur. Base ~13 s. La View affiche une FOURCHETTE (variance LLM).
-    const eta = Math.round(13 + 0.6 * Number(this.settingsModel.count) + text.length / 4000);
+    // Estimation recalibrée sur les mesures HTTP réelles (mesures.md) : base ~10 s,
+    // ~0,9 s/question (données : 10 questions → 17-22 s, moy. 19,5 s via serveur).
+    // Le texte contribue peu (~0,25 s pour 1 000 caractères). La View affiche une
+    // FOURCHETTE (±20-40 % de variance observée).
+    const eta = Math.round(10 + 0.9 * Number(this.settingsModel.count) + text.length / 4000);
     this.bus.publish("app:loading-eta", { seconds: eta });
     this.bus.publish("app:loading-step", { step: 0 });
     await pause(300);

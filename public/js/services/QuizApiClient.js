@@ -20,7 +20,8 @@ export class QuizApiClient {
   }
 
   /**
-   * Requête JSON générique.
+   * Requête JSON générique avec une seconde tentative silencieuse sur erreur
+   * réseau pure (pas sur 4xx/5xx qui sont des erreurs métier définitives).
    * @param {string} method
    * @param {string} chemin
    * @param {object} [opts]
@@ -29,7 +30,20 @@ export class QuizApiClient {
    * @param {string} [opts.ownerKey] - En-tête X-Owner-Key.
    * @returns {Promise<any>} Corps JSON (ou null si 204).
    */
-  async _request(method, chemin, { body, accessCode, ownerKey } = {}) {
+  async _request(method, chemin, opts = {}) {
+    try {
+      return await this._fetch(method, chemin, opts);
+    } catch (err) {
+      if (err.httpStatus === 0 && err.backendCode === "NETWORK") {
+        await new Promise((r) => setTimeout(r, 1000));
+        return await this._fetch(method, chemin, opts);
+      }
+      throw err;
+    }
+  }
+
+  /** @private Une tentative d'appel réseau (utilisée par _request pour le retry). */
+  async _fetch(method, chemin, { body, accessCode, ownerKey } = {}) {
     const enTetes = {};
     if (body !== undefined) enTetes["Content-Type"] = "application/json";
     if (accessCode) enTetes["X-Access-Code"] = accessCode;

@@ -169,9 +169,9 @@ export class UploadView {
   }
 
   /**
-   * Efface les éléments DOM de l'upload : textarea, résumé et input fichier
-   * (réinitialisé pour pouvoir redéposer le MÊME fichier), progression, erreur.
-   * NE touche NI au code d'accès NI aux options (gérés ailleurs).
+   * Efface l'ensemble des éléments DOM de l'upload et remet tous les contrôles
+   * à leur état du premier chargement : textarea, PDF, sélecteurs, cases à cocher,
+   * code d'accès. Appelé sur « Réinitialiser » et sur « Revenir à l'accueil ».
    */
   _clear() {
     this.textarea.value = "";
@@ -180,6 +180,15 @@ export class UploadView {
     this.dropzone.classList.remove("loaded");
     this._hideError();
     this._updateReset();
+    // Réglages remis à leur valeur par défaut.
+    this.selDifficulty.value = "medium";
+    this.selLanguage.value = "auto";
+    this.checkAttach.checked = true;
+    this.checkStore.disabled = false;
+    this.checkStore.checked = true;
+    // Code d'accès effacé (y compris l'état d'erreur éventuel du champ).
+    this.inputCode.value = "";
+    this.inputCode.classList.remove("field-error");
     // La recommandation repart de zéro pour un prochain cours.
     this._reco = null;
     this._userChoseCount = false;

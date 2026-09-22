@@ -194,6 +194,31 @@ export class QuizModel {
     this._emitEdit();
   }
 
+  /**
+   * Remet le Model à l'état initial (silencieux : l'appelant pilote la navigation).
+   * Utilisé par « Revenir à l'accueil » pour garantir qu'aucune trace du quiz
+   * précédent ne subsiste en mémoire.
+   */
+  reset() {
+    this.title = "";
+    this.language = "fr";
+    this.difficulty = "medium";
+    this.sourceLength = 0;
+    this.courseCode = null;
+    this.sourceText = "";
+    this.editable = [];
+    this._localSeq = 0;
+    this.rejectedCount = null;
+    this.saved = false;
+    this.code = null;
+    this.ownerKey = null;
+    this.questions = [];
+    this.index = 0;
+    this.isReplay = false;
+    this.flashcards = [];
+    this.deck = [];
+  }
+
   /** Marque le quiz comme enregistré (après POST /quizzes). */
   markSaved(code, ownerKey) {
     this.saved = true;

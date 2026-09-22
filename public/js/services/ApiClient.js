@@ -23,16 +23,38 @@ export class ApiClient {
     this.timeoutMs = options.timeoutMs || 130000;
     /** @type {AbortController|null} Contrôleur de la requête en cours (pour cancel/timeout). */
     this._controleurCourant = null;
+    this._cancelled = false;
   }
 
   /**
-   * Envoie la demande de génération de quiz.
+   * Envoie la demande de génération de quiz, avec une seconde tentative silencieuse
+   * sur erreur réseau (pas sur 4xx/5xx qui sont des erreurs métier définitives).
    * @param {{text:string, language:string, difficulty:string, questionCount:number}} payload
    * @param {string} accessCode - Code d'accès placé dans l'en-tête X-Access-Code.
    * @returns {Promise<object>} JSON de la réponse (à valider ensuite par Validator).
    * @throws {Error} Erreur normalisée (voir en-tête de fichier).
    */
   async generateQuiz(payload, accessCode) {
+    this._cancelled = false;
+    try {
+      return await this._attempt(payload, accessCode);
+    } catch (err) {
+      // Réessaie une fois sur erreur réseau pure (httpStatus 0, NETWORK).
+      // Les erreurs 4xx/5xx et les timeouts ne sont jamais rejoués.
+      if (err.httpStatus === 0 && err.backendCode === "NETWORK" && !err.cancelled && !this._cancelled) {
+        await new Promise((r) => setTimeout(r, 1000));
+        if (this._cancelled) throw erreurAnnulation();
+        return await this._attempt(payload, accessCode);
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Une tentative d'appel réseau (utilisée par generateQuiz pour le retry).
+   * @private
+   */
+  async _attempt(payload, accessCode) {
     const controleur = new AbortController();
     this._controleurCourant = controleur;
     // Le timeout avorte avec la raison "timeout" (à distinguer d'une annulation
@@ -73,11 +95,12 @@ export class ApiClient {
   }
 
   /**
-   * Annule la requête en cours en avortant son AbortController (celui du timeout)
-   * avec la raison "cancel". Sans effet s'il n'y a pas de requête en cours.
+   * Annule la requête en cours (et toute nouvelle tentative silencieuse) en
+   * avortant l'AbortController courant avec la raison "cancel".
    * @returns {void}
    */
   cancel() {
+    this._cancelled = true;
     if (this._controleurCourant) this._controleurCourant.abort("cancel");
   }
 }

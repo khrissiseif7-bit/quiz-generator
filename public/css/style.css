@@ -605,7 +605,10 @@ select::-ms-expand { display: none; }
 .edit-copy { padding: 6px 12px; }
 .edit-key-warning { margin-top: var(--space-2); }
 
-.edit-actions { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-3); }
+.edit-actions { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); }
+.edit-action-item { display: flex; flex-direction: column; gap: 6px; }
+.edit-action-item .btn { width: 100%; }
+.edit-action-hint { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin: 0; }
 
 /* ============ Navigation « Mes cours » + écrans cours ============ */
 .app-nav { display: flex; gap: var(--space-1); }
@@ -731,7 +734,7 @@ textarea {
   .result-actions { flex-direction: row; }
   .result-actions .btn { flex: 1; }
   .edit-actions { flex-direction: row; }
-  .edit-actions .btn { flex: 1; }
+  .edit-actions .edit-action-item { flex: 1; }
 }
 
 /* Boutons primaires isolés : pleine largeur sur mobile ; largeur auto alignée à

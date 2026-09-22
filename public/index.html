@@ -234,8 +234,14 @@
       <div id="edit-save-panel" class="edit-save-panel" hidden></div>
 
       <div class="edit-actions">
-        <button id="btn-start-quiz" type="button" class="btn btn-primary" data-i18n="btn_start_quiz">Commencer le quiz</button>
-        <button id="btn-save-quiz" type="button" class="btn btn-secondary" data-i18n="btn_save_quiz">Enregistrer ce quiz</button>
+        <div class="edit-action-item">
+          <button id="btn-start-quiz" type="button" class="btn btn-primary" data-i18n="btn_start_quiz">Commencer le quiz</button>
+          <p class="edit-action-hint" data-i18n="btn_start_quiz_hint">Jouez immédiatement, sans le sauvegarder.</p>
+        </div>
+        <div class="edit-action-item">
+          <button id="btn-save-quiz" type="button" class="btn btn-secondary" data-i18n="btn_save_quiz">Enregistrer ce quiz</button>
+          <p class="edit-action-hint" data-i18n="btn_save_quiz_hint">Recevez un code pour rejouer plus tard, partager ou suivre votre score. Vous pourrez aussi commencer directement après.</p>
+        </div>
       </div>
     </section>
 
@@ -293,6 +299,7 @@
         <button id="btn-replay-errors" type="button" class="btn btn-primary" data-i18n="btn_replay_errors">Rejouer les erreurs</button>
         <button id="btn-flashcards" type="button" class="btn btn-secondary" data-i18n="btn_flashcards">Voir les flashcards</button>
         <button id="btn-new-quiz" type="button" class="btn btn-secondary" data-i18n="btn_new_quiz">Nouveau quiz</button>
+        <button id="btn-home-reset" type="button" class="btn btn-ghost" data-i18n="btn_home_reset">Revenir à l'accueil</button>
       </div>
     </section>
 
