@@ -14,14 +14,20 @@ export class QuizController {
   constructor(deps) {
     this.bus = deps.bus;
     this.quizModel = deps.quizModel;
+    this.quizApiClient = deps.quizApiClient;
+    this.settingsModel = deps.settingsModel;
 
     // Intentions de jeu.
     this.bus.subscribe("ui:answer", ({ choiceIndex }) => this.quizModel.answer(choiceIndex));
     this.bus.subscribe("ui:next", () => this.quizModel.next());
 
     // Fin du quiz -> écran résultat (le rendu est fait par ResultView).
-    this.bus.subscribe("quiz:finished", () => {
+    this.bus.subscribe("quiz:finished", (e) => {
       this.bus.publish("screen:show", { name: "result" });
+      // Quiz ENREGISTRÉ + partie COMPLÈTE -> on enregistre la tentative (silencieux).
+      if (this.quizModel.saved && this.quizModel.code && !this.quizModel.isReplay) {
+        this._recordAttempt(e.score, e.total);
+      }
     });
 
     // Actions de l'écran résultat.
@@ -43,5 +49,22 @@ export class QuizController {
     this.bus.subscribe("ui:back-result", () => {
       this.bus.publish("screen:show", { name: "result" });
     });
+  }
+
+  /**
+   * Enregistre la tentative (POST /attempts) et publie les stats à afficher.
+   * SILENCIEUX : un échec réseau ne doit pas gâcher l'affichage du résultat.
+   * @param {number} score @param {number} total
+   * @returns {Promise<void>}
+   */
+  async _recordAttempt(score, total) {
+    try {
+      const res = await this.quizApiClient.addAttempt(
+        this.quizModel.code, score, total, this.settingsModel.getAccessCode()
+      );
+      this.bus.publish("result:stats", { stats: res.stats });
+    } catch {
+      /* enregistrement silencieux : aucune erreur affichée sur le résultat */
+    }
   }
 }

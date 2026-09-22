@@ -218,7 +218,9 @@ async function tenterModele(model, corps) {
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const controleur = new AbortController();
-  const minuteur = setTimeout(() => controleur.abort(), 60000);
+  // 120 s : les textes longs (jusqu'à ~30 000 caractères) peuvent demander
+  // 25–40 s, davantage sous charge ; 60 s était trop juste et causait des 502.
+  const minuteur = setTimeout(() => controleur.abort(), 120000);
 
   let reponse;
   try {

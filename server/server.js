@@ -29,6 +29,9 @@ dotenv.config({ path: path.join(__dirname, ".env") });
 // leur chargement. Un import statique serait hoisté et s'exécuterait AVANT la
 // ligne ci-dessus, donc avant que le .env ne soit chargé.
 const { default: quizRouter } = await import("./routes/quiz.routes.js");
+// Routeur du CRUD REST (quiz/questions/tentatives/cours). Son import initialise
+// aussi la base SQLite (db/connection.js applique le schéma au chargement).
+const { default: crudRouter } = await import("./routes/quizzes.routes.js");
 
 /**
  * Construit et configure l'application Express (sans l'écouter).
@@ -68,6 +71,8 @@ export function createApp() {
 
   // Routes métier (POST /generate-quiz).
   app.use("/", quizRouter);
+  // Routes de persistance (CRUD quiz/questions/tentatives/cours).
+  app.use("/", crudRouter);
 
   // Gestionnaire d'erreurs final : renvoie un format d'erreur homogène.
   // Traite notamment le cas d'un JSON illisible (express.json -> 400).

@@ -252,3 +252,86 @@ export function contexteAncrage(extrait, sourceText, largeur = 200) {
   const a = Math.min(sourceText.length, de + largeur);
   return { ratio: meilleur.ratio, snippet: sourceText.slice(de, a) };
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Validation d'une question ENVOYÉE PAR LE CRUD REST (ajout/modification à la
+// main). On RÉUTILISE les règles de génération (4 propositions distinctes,
+// correct_index 0..3, explication non vide, formulations interdites). Mais ici
+// source_excerpt/source_page sont FACULTATIFS : une question ajoutée à la main
+// n'a pas d'extrait source, et c'est autorisé.
+// ─────────────────────────────────────────────────────────────────────────
+const schemaCorpsQuestion = {
+  type: "object",
+  additionalProperties: false,
+  required: ["question", "choices", "correct_index", "explanation"],
+  properties: {
+    question: { type: "string", minLength: 1 },
+    choices: { type: "array", minItems: 4, maxItems: 4, items: { type: "string", minLength: 1 } },
+    correct_index: { type: "integer", minimum: 0, maximum: 3 },
+    explanation: { type: "string", minLength: 1 },
+    source_excerpt: { type: ["string", "null"] },
+    source_page: { type: ["integer", "null"], minimum: 1 },
+    // origin est FACULTATIF : présent quand le front réenvoie une question
+    // générée (POST /quizzes) ; absent/ignoré pour l'ajout manuel.
+    origin: { enum: ["ai", "manual"] },
+  },
+};
+const validerSchemaCorps = ajv.compile(schemaCorpsQuestion);
+
+/** Traduit une erreur ajv en code stable (le front l'affiche traduit). */
+function codeAjv(e) {
+  switch (e.keyword) {
+    case "required": return "REQUIRED";
+    case "minLength": return "REQUIRED";
+    case "minItems":
+    case "maxItems": return "NOT_4_CHOICES";
+    case "minimum":
+    case "maximum": return "OUT_OF_RANGE";
+    case "additionalProperties": return "UNKNOWN_FIELD";
+    default: return "INVALID_TYPE";
+  }
+}
+
+/**
+ * Valide le corps d'une question du CRUD REST. Renvoie le détail des champs
+ * fautifs (pour une réponse 400 VALIDATION_ERROR claire, traduisible côté front).
+ * @param {any} body
+ * @returns {{valid:boolean, errors:{field:string, code:string}[]}}
+ */
+export function validerCorpsQuestion(body) {
+  const errors = [];
+
+  // 1) Structure (ajv) : types, 4 propositions, bornes de correct_index…
+  if (!validerSchemaCorps(body)) {
+    for (const e of validerSchemaCorps.errors) {
+      const brut = e.instancePath.replace(/^\//, "").split("/")[0];
+      const field = brut || e.params?.missingProperty || "corps";
+      errors.push({ field, code: codeAjv(e) });
+    }
+    // Structure cassée : inutile d'aller plus loin (les règles sémantiques
+    // supposent 4 propositions bien formées).
+    return { valid: false, errors: dedupeErreurs(errors) };
+  }
+
+  // 2) Règles sémantiques réutilisées de la génération.
+  const normalisees = body.choices.map(normaliser);
+  if (new Set(normalisees).size !== normalisees.length) {
+    errors.push({ field: "choices", code: "DUPLICATE_CHOICES" });
+  }
+  if (normalisees.some((c) => FORMULATIONS_INTERDITES.some((f) => c.includes(f)))) {
+    errors.push({ field: "choices", code: "FORBIDDEN_CHOICE" });
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/** Retire les doublons {field, code}. */
+function dedupeErreurs(errors) {
+  const vus = new Set();
+  return errors.filter((e) => {
+    const cle = `${e.field}:${e.code}`;
+    if (vus.has(cle)) return false;
+    vus.add(cle);
+    return true;
+  });
+}

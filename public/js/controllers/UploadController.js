@@ -21,8 +21,14 @@ export class UploadController {
   constructor(deps) {
     Object.assign(this, deps);
 
+    // Jeton identifiant la génération en cours. Incrémenté à chaque génération
+    // et à chaque annulation : sert à ignorer une réponse tardive après annulation.
+    this._genId = 0;
+
     this.bus.subscribe("ui:text-changed", ({ text }) => {
       this.documentModel.setText(text);
+      // Recommandation instantanée du nombre de questions (heuristique client).
+      this.bus.publish("app:recommendation", { count: this.settingsModel.recommendCount(text) });
     });
 
     this.bus.subscribe("ui:settings-changed", ({ count, difficulty, language }) => {
@@ -43,6 +49,73 @@ export class UploadController {
 
     this.bus.subscribe("ui:generate", () => this.handleGenerate());
     this.bus.subscribe("ui:pdf-selected", ({ file }) => this.handlePdf(file));
+    this.bus.subscribe("ui:reset", () => this.handleReset());
+    this.bus.subscribe("ui:cancel", () => this.handleCancel());
+
+    // Options « cours » (cases à cocher) -> Model.
+    this.bus.subscribe("ui:course-options-changed", ({ attach, storeText }) => {
+      this.settingsModel.setAttachToCourses(attach);
+      this.settingsModel.setStoreCourseText(storeText);
+    });
+    // Ouverture d'un quiz existant par code.
+    this.bus.subscribe("ui:open-quiz", (e) => this.handleOpenQuiz(e));
+  }
+
+  /**
+   * Ouvre un quiz existant par code : sans clé -> jeu direct ; avec clé -> édition.
+   * @param {{code:string, ownerKey:string}} e
+   * @returns {Promise<void>}
+   */
+  async handleOpenQuiz({ code, ownerKey }) {
+    const c = (code || "").trim().toUpperCase();
+    const key = (ownerKey || "").trim();
+    if (c.length !== 6) {
+      return this.bus.publish("open:error", { message: this.i18n.t("err_open_code") });
+    }
+    try {
+      const full = await this.quizApiClient.getQuiz(c, this.settingsModel.getAccessCode());
+      this.i18n.setLanguage(full.language);
+      this.quizModel.openExisting(full, c, key || null);
+      if (key) {
+        this.bus.publish("screen:show", { name: "edit" }); // openExisting a déjà émis edit:changed
+      } else {
+        this.bus.publish("screen:show", { name: "quiz" });
+        this.quizModel.startPlay();
+      }
+    } catch (err) {
+      const msg = err.httpStatus === 404 ? this.i18n.t("err_open_notfound")
+        : err.httpStatus === 401 ? this.i18n.t("err_401")
+        : err.httpStatus === 0 ? this.i18n.t("err_network")
+        : this.i18n.t("err_generic");
+      this.bus.publish("open:error", { message: msg });
+    }
+  }
+
+  /**
+   * Réinitialise le texte source (bouton Réinitialiser). Vide le Model puis
+   * demande à la View d'effacer son DOM (textarea, résumé, input fichier, erreur).
+   * NE touche NI au code d'accès NI aux options (langue/difficulté/nombre).
+   * @returns {void}
+   */
+  handleReset() {
+    this.documentModel.setText("");    // compteur à 0 + validité recalculée
+    this.bus.publish("upload:cleared"); // la View efface ses éléments DOM
+    // #9 : le nombre de questions revient sur la valeur RECOMMANDÉE (et non sur
+    // un choix figé précédent). La View re-positionne le sélecteur.
+    this.bus.publish("app:recommendation", { count: this.settingsModel.recommendCount("") });
+  }
+
+  /**
+   * Annule la génération en cours (bouton Annuler de l'écran d'attente).
+   * - invalide le jeton pour qu'une réponse tardive n'écrase pas l'état ;
+   * - avorte la requête réseau via le Service (AbortController du timeout) ;
+   * - revient à l'upload, texte et options intacts (aucune erreur affichée).
+   * @returns {void}
+   */
+  handleCancel() {
+    this._genId++;                 // toute génération en vol devient « périmée »
+    this.apiClient.cancel();        // avorte la requête (raison "cancel")
+    this.bus.publish("screen:show", { name: "upload" });
   }
 
   /**
@@ -54,10 +127,10 @@ export class UploadController {
    */
   async handlePdf(file) {
     const estPdf = file && (file.type === "application/pdf" || /\.pdf$/i.test(file.name));
-    if (!estPdf) return this.bus.publish("app:error", { message: this.i18n.t("err_pdf_type") });
+    if (!estPdf) return this.bus.publish("app:pdf-error", { message: this.i18n.t("err_pdf_type"), level: "error" });
     // Refus immédiat au-delà de 10 Mo (avant toute lecture).
     if (file.size > 10 * 1024 * 1024) {
-      return this.bus.publish("app:error", { message: this.i18n.t("err_pdf_too_big") });
+      return this.bus.publish("app:pdf-error", { message: this.i18n.t("err_pdf_too_big"), level: "error" });
     }
 
     this.bus.publish("app:pdf-progress", { page: 0, total: 0 });
@@ -70,16 +143,17 @@ export class UploadController {
       const chars = res.text.length;
 
       // PDF scanné : moins de 50 caractères par page en moyenne -> c'est une
-      // image. On informe l'utilisateur, sans tenter d'OCR.
+      // image. AVERTISSEMENT (pas une erreur) : une action reste possible.
       if (pages > 0 && chars / pages < 50) {
-        return this.bus.publish("app:error", { message: this.i18n.t("err_pdf_scanned") });
+        return this.bus.publish("app:pdf-error", { message: this.i18n.t("err_pdf_scanned"), level: "warn" });
       }
 
       this.documentModel.setText(res.text); // met à jour compteur/validité
+      this.bus.publish("app:recommendation", { count: this.settingsModel.recommendCount(res.text) });
       this.bus.publish("pdf:extracted", { filename: file.name, pages, chars, text: res.text });
     } catch (err) {
       const key = err.code === "TOO_MANY_PAGES" ? "err_pdf_too_many_pages" : "err_pdf_failed";
-      this.bus.publish("app:error", { message: this.i18n.t(key) });
+      this.bus.publish("app:pdf-error", { message: this.i18n.t(key), level: "error" });
     }
   }
 
@@ -89,6 +163,12 @@ export class UploadController {
    * @returns {Promise<void>}
    */
   async handleGenerate() {
+    // #3 : blocage CÔTÉ CLIENT si le code d'accès est vide — AUCUN appel réseau,
+    // pas de passage par l'écran d'attente. La View met le champ en erreur.
+    if (!this.settingsModel.getAccessCode()) {
+      return this.bus.publish("ui:access-code-required", {});
+    }
+    const monTour = ++this._genId; // jeton propre à CETTE génération
     const text = this.documentModel.getText();
 
     // Interface dans la langue probable pendant l'attente.
@@ -98,24 +178,42 @@ export class UploadController {
     this.i18n.setLanguage(langueUi);
 
     this.bus.publish("screen:show", { name: "loading" });
+    // #4 : estimation recalibrée sur les mesures réelles (mesures.md). La durée
+    // dépend SURTOUT du nombre de questions (~0,6 s/question) ; le texte a un
+    // effet mineur. Base ~13 s. La View affiche une FOURCHETTE (variance LLM).
+    const eta = Math.round(13 + 0.6 * Number(this.settingsModel.count) + text.length / 4000);
+    this.bus.publish("app:loading-eta", { seconds: eta });
     this.bus.publish("app:loading-step", { step: 0 });
     await pause(300);
+    if (monTour !== this._genId) return; // annulée pendant la préparation
     this.bus.publish("app:loading-step", { step: 1 });
 
     try {
       const payload = { text, ...this.settingsModel.toRequest() };
       const donnees = await this.apiClient.generateQuiz(payload, this.settingsModel.getAccessCode());
+      if (monTour !== this._genId) return; // annulée pendant l'appel : ne rien écraser
 
       this.bus.publish("app:loading-step", { step: 2 });
       const { valid } = this.validator.validate(donnees);
       if (!valid) throw makeError(0, "INVALID_RESPONSE");
       await pause(400); // laisse voir l'étape « vérification »
+      if (monTour !== this._genId) return; // annulée pendant la vérification
 
       // Langue finale = celle réellement produite par le serveur.
       this.i18n.setLanguage(donnees.language);
-      this.bus.publish("screen:show", { name: "quiz" });
+      // Métadonnées utiles à l'enregistrement. La longueur est ce qui sera
+      // stocké côté quiz ; le texte reste EN MÉMOIRE pour le rattachement à un
+      // cours (empreinte + option « conserver le texte »), jamais persisté ici.
+      donnees.difficulty = this.settingsModel.difficulty;
+      donnees.source_length = text.length;
+      donnees.source_text = text;
+      // Écran « Vérifier les questions » AVANT le quiz.
+      this.bus.publish("screen:show", { name: "edit" });
       this.quizModel.load(donnees);
     } catch (err) {
+      // Annulation volontaire (err.cancelled) ou génération invalidée par une
+      // annulation (jeton périmé) : on ne montre AUCUN message d'erreur.
+      if (err.cancelled || monTour !== this._genId) return;
       this.bus.publish("screen:show", { name: "upload" });
       this.bus.publish("app:error", { message: this._message(err) });
     }
@@ -131,9 +229,14 @@ export class UploadController {
     const code = err.backendCode;
     if (s === 401) return this.i18n.t("err_401");
     if (s === 413) return this.i18n.t("err_413");
-    if (s === 429) return this.i18n.t("err_429");
+    if (s === 429) {
+      // On exploite retryAfterSeconds renvoyé par le serveur (arrondi à la minute).
+      const min = Math.max(1, Math.ceil((err.retryAfterSeconds || 0) / 60));
+      return this.i18n.t("err_429_detail", { min: this.i18n.isoLTR(min) });
+    }
     if (s === 400) return code === "TEXT_TOO_SHORT" ? this.i18n.t("err_400_short") : this.i18n.t("err_400");
-    if (s === 502 || s === 503) return this.i18n.t("err_502");
+    if (s === 503) return this.i18n.t("err_daily_quota"); // DAILY_QUOTA_REACHED
+    if (s === 502) return this.i18n.t("err_502");
     if (s === 0 && (code === "TIMEOUT" || code === "NETWORK")) return this.i18n.t("err_network");
     return this.i18n.t("err_generic");
   }

@@ -101,8 +101,38 @@ export function checkQuota(ip) {
   return { allowed: true };
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Quota d'ENREGISTREMENT de quiz (POST /quizzes) : 10 par heure et par IP.
+// Bucket séparé de la génération (qui, elle, est plus coûteuse et plus limitée).
+// ─────────────────────────────────────────────────────────────────────────
+const LIMITE_CREATION_QUIZ_HEURE = 10;
+/** @type {Map<string, number[]>} IP -> horodatages des créations de quiz. */
+const historiqueCreationQuiz = new Map();
+
 /**
- * Nettoie la Map : retire les IP dont toutes les requêtes datent de plus de 24 h.
+ * Vérifie et enregistre une création de quiz pour une IP (10 / heure).
+ * @param {string} ip
+ * @returns {{allowed:true} | {allowed:false, statusCode:number, error:string, retryAfterSeconds:number}}
+ */
+export function checkCreateQuizQuota(ip) {
+  const maintenant = Date.now();
+  const horodatages = (historiqueCreationQuiz.get(ip) || []).filter(
+    (t) => maintenant - t < UNE_HEURE_MS
+  );
+  if (horodatages.length >= LIMITE_CREATION_QUIZ_HEURE) {
+    const retryAfterSeconds = Math.ceil(
+      (UNE_HEURE_MS - (maintenant - horodatages[0])) / 1000
+    );
+    historiqueCreationQuiz.set(ip, horodatages);
+    return { allowed: false, statusCode: 429, error: "RATE_LIMITED", retryAfterSeconds };
+  }
+  horodatages.push(maintenant);
+  historiqueCreationQuiz.set(ip, horodatages);
+  return { allowed: true };
+}
+
+/**
+ * Nettoie les Maps : retire les IP dont toutes les requêtes datent de plus de 24 h.
  * Appelée périodiquement pour éviter une fuite mémoire.
  * @returns {void}
  */
@@ -110,11 +140,13 @@ export function nettoyer() {
   const maintenant = Date.now();
   for (const [ip, horodatages] of historiqueParIp) {
     const recents = horodatages.filter((t) => maintenant - t < UN_JOUR_MS);
-    if (recents.length === 0) {
-      historiqueParIp.delete(ip);
-    } else {
-      historiqueParIp.set(ip, recents);
-    }
+    if (recents.length === 0) historiqueParIp.delete(ip);
+    else historiqueParIp.set(ip, recents);
+  }
+  for (const [ip, horodatages] of historiqueCreationQuiz) {
+    const recents = horodatages.filter((t) => maintenant - t < UNE_HEURE_MS);
+    if (recents.length === 0) historiqueCreationQuiz.delete(ip);
+    else historiqueCreationQuiz.set(ip, recents);
   }
 }
 

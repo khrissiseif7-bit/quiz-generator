@@ -23,8 +23,12 @@ export class QuizView {
     this.feedback = document.getElementById("quiz-feedback");
     this.verdict = document.getElementById("quiz-verdict");
     this.explanation = document.getElementById("quiz-explanation");
+    this.sourceBlock = document.getElementById("quiz-source-block");
+    this.sourceIntro = document.getElementById("quiz-source-intro");
     this.sourceText = document.getElementById("quiz-source-text");
+    this.manualBadge = document.getElementById("quiz-manual-badge");
     this.btnNext = document.getElementById("btn-next");
+    this.progressFill = document.getElementById("quiz-progress-fill");
 
     this.choiceButtons = [];
     this.current = null;   // question courante (pour explication/source)
@@ -32,11 +36,34 @@ export class QuizView {
 
     this.btnNext.addEventListener("click", () => this.bus.publish("ui:next", {}));
 
+    // Raccourcis clavier : 1–4 pour répondre, Entrée pour continuer. La View ne
+    // fait qu'émettre les MÊMES intentions que les clics (aucune logique métier).
+    document.addEventListener("keydown", (e) => this._onKey(e));
+
     this.bus.subscribe("screen:show", ({ name }) => {
       this.section.hidden = name !== "quiz";
     });
     this.bus.subscribe("quiz:question", (e) => this._renderQuestion(e));
     this.bus.subscribe("quiz:answered", (e) => this._renderAnswer(e));
+  }
+
+  /**
+   * Raccourcis clavier de l'écran quiz (actifs seulement quand il est visible).
+   * @param {KeyboardEvent} e
+   */
+  _onKey(e) {
+    if (this.section.hidden) return;
+    const tag = ((e.target && e.target.tagName) || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return;
+    if (e.key >= "1" && e.key <= "4") {
+      const i = Number(e.key) - 1;
+      if (this.choiceButtons[i] && !this.choiceButtons[i].disabled) {
+        this.bus.publish("ui:answer", { choiceIndex: i });
+      }
+    } else if (e.key === "Enter" && !this.btnNext.hidden) {
+      e.preventDefault();
+      this.bus.publish("ui:next", {});
+    }
   }
 
   /**
@@ -47,17 +74,28 @@ export class QuizView {
     this.current = question;
     this.isLast = index === total - 1;
 
-    this.progress.textContent = this.i18n.t("quiz_progress", { i: index + 1, n: total });
+    // Fraction isolée en LTR pour rester lisible en arabe (« 1 / 2 », pas « 2 / 1 »).
+    const frac = this.i18n.isoLTR(`${index + 1} / ${total}`);
+    this.progress.textContent = this.i18n.t("quiz_progress", { frac });
+    // Barre de progression qui GLISSE (transition CSS sur la largeur).
+    this.progressFill.style.width = `${((index + 1) / total) * 100}%`;
     this.questionEl.textContent = question.question;
 
-    // (Re)construction des propositions.
+    // (Re)construction des propositions, avec un badge de raccourci (1–4).
     this.choicesEl.innerHTML = "";
     this.choiceButtons = question.choices.map((texte, i) => {
       const li = document.createElement("li");
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "choice";
-      btn.textContent = texte;
+      const key = document.createElement("span");
+      key.className = "choice-key";
+      key.setAttribute("aria-hidden", "true");
+      key.textContent = String(i + 1);
+      const label = document.createElement("span");
+      label.className = "choice-label";
+      label.textContent = texte;
+      btn.append(key, label);
       btn.addEventListener("click", () => this.bus.publish("ui:answer", { choiceIndex: i }));
       li.appendChild(btn);
       this.choicesEl.appendChild(li);
@@ -83,7 +121,18 @@ export class QuizView {
     this.verdict.textContent = this.i18n.t(correct ? "verdict_correct" : "verdict_wrong");
     this.verdict.className = "quiz-verdict " + (correct ? "correct" : "wrong");
     this.explanation.textContent = this.current.explanation;
-    this.sourceText.textContent = this.current.source_excerpt;
+    // Question IA (avec extrait) -> bloc citation « D'après le cours, page N ».
+    // Question ajoutée à la main (pas d'extrait) -> badge distinct, jamais « page null ».
+    if (this.current.source_excerpt) {
+      this.sourceIntro.textContent = this.i18n.t("source_intro", { page: this.current.source_page });
+      this.sourceText.textContent = this.current.source_excerpt;
+      this.sourceBlock.hidden = false;
+      this.manualBadge.hidden = true;
+    } else {
+      this.manualBadge.textContent = this.i18n.t("manual_badge");
+      this.manualBadge.hidden = false;
+      this.sourceBlock.hidden = true;
+    }
 
     this.feedback.hidden = false;
     this.btnNext.hidden = false;

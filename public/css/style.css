@@ -1,198 +1,283 @@
 /*
- * style.css — Feuille de style globale (sobre, lisible, mobile d'abord).
+ * style.css — Système de design « outil d'étude » (sobre, mobile-first).
  *
- * Présentation uniquement (aucune logique). Organisation :
- *   1. Variables CSS   2. Reset   3. Layout & écrans
- *   4. Formulaire (upload)   5. Attente   6. Quiz   7. Résultat
- *   8. Flashcards   9. Utilitaires & erreurs   10. RTL   11. Responsive
- *
- * La bascule dir="rtl" est faite en JS (I18n.js) sur <html> ; le CSS y réagit
- * via des propriétés logiques (margin-inline, text-align) et le sélecteur
- * [dir="rtl"].
+ * RÈGLES :
+ *   - toutes les couleurs passent par une variable (aucune valeur en dur) ;
+ *   - --correct / --incorrect : UNIQUEMENT le feedback des réponses ;
+ *   - --signature : bordure/fond du bloc citation UNIQUEMENT (jamais du texte) ;
+ *   - 3 styles de bouton : .btn-primary (plein), .btn-secondary (contour),
+ *     .btn-ghost (texte). Un seul primaire visible par écran ;
+ *   - interligne 1.6 sur textarea, explications et extraits ;
+ *   - RTL géré par propriétés logiques + [dir="rtl"].
  */
 
-/* ============ 1. Variables ============ */
+/* ============ Système de design ============ */
 :root {
-  --color-bg: #f7f8fa;
-  --color-surface: #ffffff;
-  --color-text: #1a1a2e;
-  --color-muted: #6b7280;
-  --color-primary: #2563eb;
-  --color-primary-dark: #1d4ed8;
-  --color-correct: #16a34a;
-  --color-correct-bg: #dcfce7;
-  --color-wrong: #dc2626;
-  --color-wrong-bg: #fee2e2;
-  --color-accent: #7c3aed;
-  --color-border: #e5e7eb;
-
-  --space-1: 0.5rem;
-  --space-2: 1rem;
-  --space-3: 1.5rem;
-  --space-4: 2rem;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --font-base: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+  --accent:        #317AC1;  /* boutons primaires, progression, focus */
+  --accent-text:   #2A6AA8;  /* liens et texte bleu (contraste 4.5:1) */
+  --accent-soft:   #E8F0F9;  /* survol, sélection en cours */
+  --text:          #384454;
+  --text-muted:    #6B7484;
+  --border:        #D4D3DC;
+  --bg:            #F7F7F9;
+  --surface:       #FFFFFF;
+  --signature:     #E1A624;  /* bordure du bloc « D'après ton cours » */
+  --signature-bg:  #FDF6E4;
+  --correct:       #2E7D4F;  --correct-bg:   #E6F4EC;
+  --incorrect:     #C0392B;  --incorrect-bg: #FBEAE7;
+  --space-1: 8px; --space-2: 16px; --space-3: 24px; --space-4: 32px; --space-6: 48px;
+  --radius: 10px;
+  --font: "Segoe UI", "Tahoma", system-ui, sans-serif;
 }
 
-/* ============ 2. Reset ============ */
+/* ============ Reset & base ============ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { -webkit-text-size-adjust: 100%; }
+
 body {
-  font-family: var(--font-base);
-  color: var(--color-text);
-  background: var(--color-bg);
-  line-height: 1.55;
-  -webkit-text-size-adjust: 100%;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.6;
+  min-height: 100vh;
 }
 
+h1, h2, h3 { line-height: 1.3; font-weight: 700; }
 [hidden] { display: none !important; }
 
-/* ============ 3. Layout & écrans ============ */
-.app-header {
-  background: var(--color-primary);
-  color: #fff;
-  padding: var(--space-2);
-  text-align: center;
+/* ============ Accessibilité ============ */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip: rect(0 0 0 0); clip-path: inset(50%);
+  overflow: hidden; white-space: nowrap;
 }
-.app-header h1 { font-size: 1.25rem; font-weight: 700; }
+/* Focus clavier visible sur tout élément interactif. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+:focus:not(:focus-visible) { outline: none; }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ============ En-tête (fin, sur --surface) ============ */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.app-brand { display: flex; flex-direction: column; gap: 2px; }
+.app-name { font-size: 1.05rem; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+/* Promesse produit : texte discret + icône en --signature (1re couleur signature). */
+.app-verified { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted); }
+.app-verified-icon { width: 14px; height: 14px; flex: none; color: var(--signature); }
+
+/* ============ Layout & écrans ============ */
 .app-main {
-  max-width: 720px;
+  /* Large pour l'upload deux colonnes ; les autres écrans sont bridés à 700px. */
+  max-width: 1100px;
   margin: 0 auto;
   padding: var(--space-2);
+  overflow-x: hidden; /* filet de sécurité : aucune barre horizontale de page */
 }
-
 .screen {
-  background: var(--color-surface);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: var(--space-3);
-  margin-top: var(--space-2);
+  padding: var(--space-4);
+  max-width: 700px;
+  margin: 0 auto;
+  /* Carte détachée du fond --bg par une ombre très légère. */
+  box-shadow: 0 2px 8px rgba(56, 68, 84, 0.06);
 }
-.screen > h2 { font-size: 1.15rem; margin-bottom: var(--space-2); }
+.screen > h2 { font-size: 1.2rem; margin-bottom: var(--space-3); }
 
-/* ============ 4. Formulaire (upload) ============ */
+/* ============ Boutons ============ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+}
+.btn-primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.btn-primary:hover { background: var(--accent-text); border-color: var(--accent-text); }
+.btn-secondary { background: transparent; border-color: var(--border); color: var(--accent-text); }
+.btn-secondary:hover { border-color: var(--accent); background: var(--accent-soft); }
+.btn-ghost { background: transparent; border: none; color: var(--text-muted); padding: 8px 12px; font-weight: 600; }
+.btn-ghost:hover { color: var(--text); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* Primaire désactivé : gris franc (jamais un bleu délavé qui semble actif). */
+.btn-primary:disabled { background: var(--border); border-color: var(--border); color: var(--text-muted); opacity: 1; }
+
+/* ============ Formulaire ============ */
 .field { margin-bottom: var(--space-2); }
+/* Titres de section (labels des champs) en accent — plus en gris. */
 .field > label {
   display: block;
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--color-muted);
+  color: var(--accent-text);
   margin-bottom: var(--space-1);
 }
-
 textarea, select, input[type="password"], input[type="text"] {
   width: 100%;
   font: inherit;
-  color: var(--color-text);
-  background: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 0.65rem 0.75rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
 }
-textarea { resize: vertical; min-height: 8rem; }
+textarea { resize: vertical; min-height: 7rem; line-height: 1.6; }
 textarea:focus, select:focus, input:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
-  border-color: var(--color-primary);
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.counter-row {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-1);
-  margin-top: 0.35rem;
-  font-size: 0.8rem;
+/* Sélecteurs personnalisés : on retire l'apparence native (Windows) et on
+   dessine un chevron SVG en --text-muted. En RTL, le chevron passe à gauche. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7484' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-2) center;
+  padding-inline-end: 38px;
 }
-.char-counter { color: var(--color-muted); }
-.length-hint { color: var(--color-wrong); font-weight: 600; text-align: end; }
-.length-hint.ok { color: var(--color-correct); }
-
-/* Grille d'options : empilée sur mobile, en ligne dès qu'il y a la place. */
-.options {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-2);
+select::-ms-expand { display: none; }
+[dir="rtl"] select {
+  background-position: left var(--space-2) center;
+  padding-inline-end: 12px;
+  padding-inline-start: 38px;
 }
 
-/* Zone de dépôt PDF */
+.counter-row { margin-top: var(--space-1); font-size: 0.8rem; }
+/* Une seule information : « X / 300 minimum » (muted) puis « X caractères »
+   (--correct une fois le seuil franchi), ou --incorrect si trop long. */
+.char-counter { color: var(--text-muted); font-weight: 600; }
+.char-counter.ok { color: var(--correct); }
+.char-counter.warn { color: var(--incorrect); }
+
+.options { display: grid; grid-template-columns: 1fr; gap: var(--space-2); }
+.options .field { margin-bottom: 0; }
+
+/* Zone de dépôt PDF : pointillés, icône, états survol / fichier chargé. */
 .dropzone {
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2);
   text-align: center;
-  color: var(--color-muted);
+  color: var(--text-muted);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  /* Fond bleuté très pâle pour distinguer la zone de dépôt du textarea blanc. */
+  background: var(--accent-soft);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
-.dropzone:hover, .dropzone:focus { border-color: var(--color-primary); background: #f8faff; outline: none; }
-.dropzone.dragover { border-color: var(--color-primary); background: #eef4ff; color: var(--color-primary); }
+.dropzone-icon { width: 28px; height: 28px; color: var(--accent); transition: color 0.15s; }
+.dropzone-text { font-size: 0.9rem; }
+.dropzone:hover, .dropzone:focus-visible { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+.dropzone:hover .dropzone-icon, .dropzone.dragover .dropzone-icon { color: var(--accent); }
+/* Glisser en cours = bordure pleine accent. */
+.dropzone.dragover { border-color: var(--accent); border-style: solid; background: var(--accent-soft); color: var(--accent-text); }
+/* Fichier chargé (résumé visible) = bordure accent. */
+.dropzone.loaded { border-color: var(--accent); border-style: solid; }
 
-.pdf-progress {
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--color-primary);
-  font-weight: 600;
-}
-.pdf-summary {
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--color-correct);
-  background: var(--color-correct-bg);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.65rem;
+.upload-or { text-align: center; color: var(--text-muted); font-size: 0.85rem; margin: var(--space-1) 0; }
+
+/* ============ Upload : deux colonnes + code d'accès + génération ============ */
+/* Écran d'upload plus compact que les autres (moins de hauteur). */
+#screen-upload { padding: var(--space-3); }
+#screen-upload > h2 { margin-bottom: var(--space-2); }
+.upload-secondary-actions { display: flex; justify-content: flex-end; margin-bottom: var(--space-1); }
+
+/* Code d'accès secondaire (étroit, libellé discret) + bouton Générer.
+   Empilés sur mobile ; côte à côte sur grand écran (voir media ≥900px). */
+.generate-row { margin-top: var(--space-2); display: flex; flex-direction: column; gap: var(--space-2); }
+.generate-row .field-access { margin-bottom: 0; }
+.generate-row .field-access > label { font-size: 0.8rem; color: var(--text-muted); }
+/* Colonne du bouton : l'erreur d'envoi se place juste au-dessus du bouton. */
+.generate-col { display: flex; flex-direction: column; }
+.generate-col .msg-slot { min-height: 0; margin-top: 0; margin-bottom: var(--space-1); }
+.generate-col .msg-slot:empty, .generate-col .msg-slot:has(> [hidden]) { margin-bottom: 0; }
+
+@media (min-width: 900px) {
+  #screen-upload { max-width: 1040px; padding: var(--space-2) var(--space-3); }
+  #screen-upload > h2 { margin-bottom: var(--space-2); }
+
+  /* Deux colonnes de MÊME hauteur : la zone de dépôt et le textarea s'étirent
+     (align-items: stretch) et remplissent leur colonne (flex: 1). */
+  .upload-sources {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: stretch;
+    column-gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+  .upload-sources .field { margin-bottom: 0; }
+  .upload-pdf, .upload-text { display: flex; }
+  .upload-pdf > .field, .upload-text > .field { flex: 1; display: flex; flex-direction: column; }
+  /* Hauteur compacte et fixe : le textarea donne le ton, la zone de dépôt
+     s'étire (flex: 1) pour l'égaler. Priorité : tout tient en 1366×768. */
+  .upload-text textarea { height: 125px; min-height: 0; }
+  .dropzone { flex: 1; }
+
+  /* Séparateur « ou » : trait vertical fin, mot centré sur toute la hauteur. */
+  .upload-or {
+    align-self: stretch;
+    display: flex; flex-direction: column; align-items: center;
+    gap: var(--space-1); margin: 0;
+  }
+  .upload-or::before, .upload-or::after {
+    content: ""; flex: 1; width: 1px; background: var(--border);
+  }
+
+  .options { grid-template-columns: repeat(3, 1fr); }
+
+  /* Code d'accès étroit à gauche, colonne du bouton occupant le reste. */
+  .generate-row { flex-direction: row; align-items: flex-end; }
+  .generate-row .field-access { flex: 0 0 220px; }
+  .generate-col { flex: 1; }
 }
 
-.upload-or {
-  text-align: center;
-  color: var(--color-muted);
-  font-size: 0.85rem;
-  margin: var(--space-2) 0;
-}
-
-/* ============ Boutons ============ */
-.btn {
-  display: inline-block;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid var(--color-border);
-  background: #fff;
-  color: var(--color-text);
-  border-radius: var(--radius-sm);
-  padding: 0.7rem 1rem;
-  transition: background 0.15s, opacity 0.15s;
-}
-.btn:hover { background: #f3f4f6; }
-.btn-primary {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
-  width: 100%;
-}
-.btn-primary:hover { background: var(--color-primary-dark); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* ============ 5. Attente ============ */
+/* ============ Écran d'attente ============ */
 #screen-loading { text-align: center; }
-
 .spinner {
-  width: 48px; height: 48px;
-  margin: var(--space-3) auto var(--space-2);
-  border: 4px solid var(--color-border);
-  border-top-color: var(--color-primary);
+  width: 44px; height: 44px;
+  margin: var(--space-4) auto var(--space-3);
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.9s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Barre de progression indéterminée : bouge en continu (jamais figée). */
+.loading-eta { color: var(--text-muted); font-size: 0.9rem; margin-bottom: var(--space-2); min-height: 1.2em; }
+
+/* Barre de progression fluide (se remplit ; en RTL, depuis la droite). */
 .progress-bar {
   position: relative;
   height: 6px;
-  background: var(--color-border);
+  background: var(--border);
   border-radius: 999px;
   overflow: hidden;
   margin-bottom: var(--space-3);
@@ -200,172 +285,463 @@ textarea:focus, select:focus, input:focus {
 .progress-bar > span {
   position: absolute;
   inset-block: 0;
-  inline-size: 40%;
-  background: var(--color-primary);
+  inset-inline-start: 0;   /* ancré au début : LTR=gauche, RTL=droite */
+  width: 0;
+  background: var(--accent);
   border-radius: 999px;
-  animation: slide 1.3s ease-in-out infinite;
-}
-@keyframes slide {
-  0%   { inset-inline-start: -40%; }
-  100% { inset-inline-start: 100%; }
+  transition: width linear;
 }
 
-.loading-steps { list-style: none; text-align: start; max-width: 20rem; margin: 0 auto; }
+.loading-steps { list-style: none; max-width: 20rem; margin: 0 auto; text-align: start; }
 .loading-steps li {
-  padding: 0.5rem 0 0.5rem 1.75rem;
-  position: relative;
-  color: var(--color-muted);
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) 0;
+  color: var(--text-muted);
   transition: color 0.2s;
 }
-.loading-steps li::before {
-  content: "○";
-  position: absolute;
-  inset-inline-start: 0;
-}
-.loading-steps li.active { color: var(--color-text); font-weight: 600; }
-.loading-steps li.active::before { content: "◉"; color: var(--color-primary); }
-.loading-steps li.done { color: var(--color-correct); }
-.loading-steps li.done::before { content: "✓"; color: var(--color-correct); }
+.loading-steps .step-icon { flex: 0 0 auto; width: 1.25rem; text-align: center; unicode-bidi: isolate; }
+.loading-steps .step-icon::before { content: "○"; }
+.loading-steps .step-text { unicode-bidi: plaintext; }
+.loading-steps li.active { color: var(--text); font-weight: 600; }
+.loading-steps li.active .step-icon::before { content: "◉"; color: var(--accent); }
+.loading-steps li.done .step-icon::before { content: "✓"; color: var(--accent); }
 
-/* ============ 6. Quiz ============ */
-.quiz-progress { font-size: 0.85rem; color: var(--color-muted); margin-bottom: var(--space-1); }
-.quiz-question { font-size: 1.15rem; line-height: 1.4; margin-bottom: var(--space-3); }
+.btn-cancel { margin-top: var(--space-3); }
+.cancel-note { margin-top: var(--space-1); font-size: 0.8rem; color: var(--text-muted); }
+
+/* ============ Écran de quiz ============ */
+.quiz-progress-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: var(--space-1);
+}
+#quiz-progress-fill {
+  display: block; height: 100%; width: 0;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 300ms ease; /* glisse, ne saute pas */
+}
+.quiz-progress { font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-2); }
+.quiz-question { font-size: 1.25rem; line-height: 1.4; margin-bottom: var(--space-3); }
 
 .quiz-choices { list-style: none; display: flex; flex-direction: column; gap: var(--space-1); }
 .choice {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   text-align: start;
   font: inherit;
+  line-height: 1.4;
   cursor: pointer;
-  background: #fff;
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 0.85rem 1rem;
-  transition: background 0.15s, border-color 0.15s;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
-.choice:hover:not(:disabled) { border-color: var(--color-primary); background: #f8faff; }
+.choice-key {
+  flex: 0 0 auto;
+  width: 1.6rem; height: 1.6rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  unicode-bidi: isolate;
+}
+.choice:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.choice:active:not(:disabled) { box-shadow: inset 0 0 0 2px var(--accent-soft); }
 .choice:disabled { cursor: default; }
-/* États après réponse */
-.choice.is-correct {
-  border-color: var(--color-correct);
-  background: var(--color-correct-bg);
-  color: #065f46;
-  font-weight: 600;
-}
-.choice.is-wrong {
-  border-color: var(--color-wrong);
-  background: var(--color-wrong-bg);
-  color: #991b1b;
-  font-weight: 600;
-}
+/* États de FEEDBACK (--correct / --incorrect réservés ici). */
+.choice.is-correct { border-color: var(--correct); background: var(--correct-bg); color: var(--correct); font-weight: 600; }
+.choice.is-correct .choice-key { color: var(--correct); border-color: var(--correct); background: var(--surface); }
+.choice.is-wrong { border-color: var(--incorrect); background: var(--incorrect-bg); color: var(--incorrect); font-weight: 600; }
+.choice.is-wrong .choice-key { color: var(--incorrect); border-color: var(--incorrect); background: var(--surface); }
 
-/* Feedback : explication puis extrait source */
+.quiz-shortcuts { margin-top: var(--space-2); font-size: 0.78rem; color: var(--text-muted); }
+
+/* Feedback : apparition en fondu (explication puis extrait). */
 .quiz-feedback { margin-top: var(--space-3); }
-.quiz-verdict { font-weight: 700; margin-bottom: var(--space-1); }
-.quiz-verdict.correct { color: var(--color-correct); }
-.quiz-verdict.wrong { color: var(--color-wrong); }
-.quiz-explanation { margin-bottom: var(--space-2); }
+.quiz-feedback:not([hidden]) .quiz-verdict { animation: fadeIn 200ms ease both; }
+.quiz-feedback:not([hidden]) .quiz-explanation { animation: fadeIn 200ms ease 60ms both; }
+.quiz-feedback:not([hidden]) .quiz-source { animation: fadeIn 200ms ease 140ms both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-/* Point clé du projet : l'extrait du cours, en bloc citation distinct. */
+.quiz-verdict { font-weight: 700; margin-bottom: var(--space-1); }
+.quiz-verdict.correct { color: var(--correct); }
+.quiz-verdict.wrong { color: var(--incorrect); }
+.quiz-explanation { margin-bottom: var(--space-2); line-height: 1.6; }
+
+/* Bloc citation SIGNATURE : fond + bordure latérale --signature, texte italique. */
 .quiz-source {
-  background: #f5f3ff;
-  border-inline-start: 4px solid var(--color-accent);
-  border-radius: var(--radius-sm);
-  padding: var(--space-2);
+  background: var(--signature-bg);
+  border-inline-start: 4px solid var(--signature);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
 }
 .quiz-source-intro {
   display: block;
   font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--color-accent);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-bottom: 0.35rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
 }
-.quiz-source-text { font-style: italic; }
-.quiz-source-text::before { content: "« "; }
-.quiz-source-text::after { content: " »"; }
+/* Pas de guillemets : la bordure --signature et l'italique suffisent à citer. */
+.quiz-source-text { font-style: italic; line-height: 1.6; }
 
-.quiz-actions { margin-top: var(--space-3); }
+/* Action unique : pleine largeur sur mobile (voir media ≥700px pour l'écran large). */
+.quiz-actions { margin-top: var(--space-3); display: flex; }
+.quiz-actions .btn { width: 100%; }
 
-/* ============ 7. Résultat ============ */
-.result-score { text-align: center; margin-bottom: var(--space-3); }
-.result-score strong { font-size: 2rem; display: block; }
-.result-percent { color: var(--color-muted); }
+/* ============ Écran de résultat ============ */
+#screen-result { text-align: center; }
+.result-ring-wrap { position: relative; width: 160px; height: 160px; margin: var(--space-2) auto var(--space-3); }
+.result-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+.result-ring-bg { fill: none; stroke: var(--border); stroke-width: 10; }
+.result-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 800ms ease;
+}
+.result-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.result-percent { font-size: 2rem; font-weight: 700; color: var(--accent-text); }
+.result-score { font-size: 0.95rem; color: var(--text-muted); }
+.result-caption { color: var(--text-muted); margin-bottom: var(--space-1); }
+.result-stats { color: var(--text-muted); font-size: 0.85rem; margin-bottom: var(--space-3); }
 
-.result-missed-title { font-size: 1rem; margin-bottom: var(--space-1); }
-.result-missed { padding-inline-start: 1.25rem; margin-bottom: var(--space-3); }
-.result-missed li { margin-bottom: var(--space-1); }
-.result-missed .correct-answer { color: var(--color-correct); font-weight: 600; }
+.result-missed-title { font-size: 1rem; margin-bottom: var(--space-1); text-align: start; }
+.result-missed { list-style: none; margin-bottom: var(--space-3); text-align: start; }
+.result-missed li {
+  margin-bottom: var(--space-2);
+  padding-inline-start: var(--space-2);
+  border-inline-start: 3px solid var(--border);
+}
+.result-missed .result-missed-q { font-weight: 600; }
+.result-missed .correct-answer { color: var(--correct); font-size: 0.9rem; }
+/* Extrait source du récap : même signature que dans le quiz. */
+.result-missed .result-missed-src {
+  margin-top: var(--space-1);
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--text-muted);
+  background: var(--signature-bg);
+  border-inline-start: 4px solid var(--signature);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+}
 
 .result-actions { display: flex; flex-direction: column; gap: var(--space-1); }
 
-/* ============ 8. Flashcards ============ */
+/* ============ Flashcards (retournement 3D) ============ */
 #screen-flashcards { text-align: center; }
-.flashcard-progress { font-size: 0.85rem; color: var(--color-muted); margin-bottom: var(--space-2); }
-
+.flashcard-progress { font-size: 0.85rem; color: var(--text-muted); margin-bottom: var(--space-2); }
 .flashcard {
   position: relative;
-  min-height: 11rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-3);
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius);
-  background: #fff;
+  min-height: 12rem;
   cursor: pointer;
   user-select: none;
+  perspective: 1000px;
+}
+.flashcard-inner {
+  position: relative;
+  width: 100%;
+  min-height: 11rem;
+  transform-style: preserve-3d;
+  transition: transform 0.5s;
+}
+.flashcard[data-face="back"] .flashcard-inner { transform: rotateY(180deg); }
+.flashcard-face {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   font-size: 1.1rem;
+  line-height: 1.6;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
-.flashcard-face { display: none; }
-.flashcard[data-face="front"] .flashcard-front { display: block; }
-.flashcard[data-face="back"] .flashcard-back { display: block; }
-.flashcard[data-face="back"] { background: #f5f3ff; border-color: var(--color-accent); }
-.flashcard-hint {
-  position: absolute;
-  inset-block-end: 0.5rem;
-  inset-inline: 0;
-  font-size: 0.7rem;
-  color: var(--color-muted);
-}
+.flashcard-front { background: var(--surface); }
+.flashcard-back { background: var(--accent-soft); transform: rotateY(180deg); }
+.flashcard-hint { position: absolute; inset-block-end: var(--space-1); inset-inline: 0; font-size: 0.7rem; color: var(--text-muted); }
 
-.flashcard-actions {
-  display: flex;
-  gap: var(--space-1);
-  margin-top: var(--space-2);
-}
+.flashcard-actions { display: flex; gap: var(--space-1); margin-top: var(--space-2); }
 .flashcard-actions .btn { flex: 1; }
-.btn-known { border-color: var(--color-correct); color: var(--color-correct); }
-.btn-known:hover { background: var(--color-correct-bg); }
-.btn-review { border-color: var(--color-wrong); color: var(--color-wrong); }
-.btn-review:hover { background: var(--color-wrong-bg); }
-
-.flashcards-done { margin-top: var(--space-2); }
+.flashcards-done { margin-top: var(--space-2); display: flex; flex-direction: column; }
+.flashcards-done .btn { width: 100%; }
 .flashcards-done p { margin-bottom: var(--space-2); font-weight: 600; }
 
-/* ============ 9. Erreurs ============ */
-.error-message {
-  background: var(--color-wrong-bg);
-  color: #991b1b;
-  border: 1px solid var(--color-wrong);
-  border-radius: var(--radius-sm);
-  padding: 0.65rem 0.85rem;
-  margin-bottom: var(--space-2);
-  font-size: 0.9rem;
+/* ============ Messages : information / avertissement / erreur ============ */
+/* Emplacement RÉSERVÉ : la hauteur minimale évite tout saut de mise en page à
+   l'apparition d'un message d'une ligne. */
+.msg-slot { min-height: 1.9rem; margin-top: 4px; }
+.msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  border-radius: var(--radius);
+  /* La couleur de la bordure vient du niveau ; à gauche en LTR, à droite en RTL. */
+  border-inline-start: 3px solid;
+  color: var(--text);
+}
+.msg-ico { flex: 0 0 auto; width: 15px; height: 15px; display: none; }
+.msg-text { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+/* Une seule icône visible selon le niveau. */
+.msg--info  .msg-ico-info  { display: block; }
+.msg--warn  .msg-ico-warn  { display: block; }
+.msg--error .msg-ico-error { display: block; }
+/* Niveaux : information (bleu), avertissement (signature), erreur (rouge). */
+.msg--info  { background: var(--accent-soft);  border-color: var(--accent); }
+.msg--info  .msg-ico-info  { color: var(--accent); }
+.msg--warn  { background: var(--signature-bg); border-color: var(--signature); }
+.msg--warn  .msg-ico-warn  { color: var(--signature); }
+.msg--error { background: var(--incorrect-bg); border-color: var(--incorrect); color: var(--incorrect); }
+.msg--error .msg-ico-error { color: var(--incorrect); }
+
+/* ============ RTL ============ */
+/* Direction posée sur <html> par I18n.js ; l'essentiel via propriétés logiques
+   (inset-inline, border-inline-start, margin-inline…). Les fractions « X / Y »
+   sont isolées en LTR côté JS (I18n.isoLTR). */
+
+/* ============ Options « cours » + ouverture par code (écran d'upload) ============ */
+.course-options { margin-top: var(--space-2); display: flex; flex-direction: column; gap: 6px; }
+.course-check { display: flex; align-items: center; gap: var(--space-1); font-size: 0.9rem; cursor: pointer; }
+.course-check input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); flex: 0 0 auto; }
+.course-store-note { font-size: 0.8rem; color: var(--text-muted); margin-inline-start: calc(1.05rem + var(--space-1)); }
+
+.open-quiz { margin-top: var(--space-3); border-top: 1px solid var(--border); padding-top: var(--space-2); }
+.open-quiz > summary { cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--accent-text); }
+.open-quiz-body { margin-top: var(--space-2); }
+.open-quiz-body .field { margin-bottom: var(--space-2); }
+@media (min-width: 700px) {
+  .open-quiz-body { display: grid; grid-template-columns: 1fr 1fr auto; gap: var(--space-2); align-items: end; }
+  .open-quiz-body .field { margin-bottom: 0; }
+  .open-quiz-body .msg-slot { grid-column: 1 / -1; }
 }
 
-/* ============ 10. RTL ============ */
-[dir="rtl"] .loading-steps,
-[dir="rtl"] .result-missed { text-align: right; }
-/* Les bordures/marges utilisent déjà des propriétés logiques (inline-start,
-   margin-inline…), donc l'essentiel du RTL est géré automatiquement. */
+/* ============ Écran « Vérifier les questions » (édition) ============ */
+.edit-intro { color: var(--text-muted); font-size: 0.9rem; margin-bottom: var(--space-3); }
+.edit-list { list-style: none; }
+.edit-item {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.edit-item-head { display: flex; gap: var(--space-2); align-items: baseline; }
+.edit-num {
+  flex: 0 0 auto;
+  min-width: 1.6rem; height: 1.6rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; font-weight: 700;
+  color: var(--accent-text); background: var(--accent-soft);
+  border-radius: 6px; unicode-bidi: isolate;
+}
+.edit-q { font-weight: 600; overflow-wrap: anywhere; }
+.edit-answer { margin-top: var(--space-1); font-size: 0.9rem; }
+.edit-answer-label { color: var(--text-muted); margin-inline-end: 4px; }
+.edit-correct { color: var(--correct); font-weight: 600; overflow-wrap: anywhere; }
+.edit-meta { margin-top: 2px; font-size: 0.8rem; }
+.edit-page { color: var(--text-muted); }
+.edit-badge {
+  color: var(--signature); background: var(--signature-bg);
+  border: 1px solid var(--signature); border-radius: 999px;
+  padding: 1px 8px; font-size: 0.75rem; font-weight: 600;
+}
+.edit-item-actions { display: flex; align-items: center; gap: var(--space-1); margin-top: var(--space-1); }
+.edit-min-note { font-size: 0.75rem; color: var(--text-muted); margin-inline-start: var(--space-1); }
 
-/* ============ 11. Responsive ============ */
+/* Confirmation de suppression en place. */
+.edit-confirm {
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1);
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  background: var(--incorrect-bg);
+  border-inline-start: 3px solid var(--incorrect);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+}
+.edit-confirm .btn { padding: 8px 14px; }
+
+/* Formulaire d'édition / d'ajout. */
+.edit-form { display: flex; flex-direction: column; gap: 4px; padding: var(--space-2) 0; }
+.edit-form > label { font-size: 0.8rem; font-weight: 600; color: var(--accent-text); margin-top: var(--space-1); }
+.edit-input-question, .edit-input-explanation, .edit-choice-input {
+  width: 100%; font: inherit; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 10px; overflow-wrap: anywhere;
+}
+.edit-input-question:focus, .edit-input-explanation:focus, .edit-choice-input:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.edit-choice-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 4px; }
+.edit-radio { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; accent-color: var(--accent); }
+.edit-choice-input { flex: 1; min-width: 0; }
+.edit-error { color: var(--incorrect); font-size: 0.8rem; margin: 2px 0; }
+.edit-form-actions { display: flex; gap: var(--space-1); margin-top: var(--space-2); }
+
+.edit-add-row { margin-top: var(--space-2); }
+
+/* Panneau d'enregistrement : code + clé + copier. */
+.edit-save-panel {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+}
+.edit-save-title { font-size: 1rem; margin-bottom: var(--space-2); }
+.edit-save-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); margin-bottom: var(--space-1); }
+.edit-save-label { font-size: 0.85rem; color: var(--text-muted); min-width: 8rem; }
+.edit-save-value { font-weight: 700; font-size: 1.05rem; letter-spacing: 0.04em; unicode-bidi: isolate; }
+.edit-save-key { font-family: "Consolas", "Courier New", monospace; font-size: 0.9rem; font-weight: 400; overflow-wrap: anywhere; }
+.edit-copy { padding: 6px 12px; }
+.edit-key-warning { margin-top: var(--space-2); }
+
+.edit-actions { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-3); }
+
+/* ============ Navigation « Mes cours » + écrans cours ============ */
+.app-nav { display: flex; gap: var(--space-1); }
+.app-nav-btn {
+  font: inherit; font-size: 0.9rem; font-weight: 600; color: var(--accent-text);
+  background: transparent; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px 12px; cursor: pointer;
+}
+.app-nav-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+
+.courses-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-3); }
+.courses-head h2 { font-size: 1.2rem; }
+.courses-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.course-card {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+  padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.course-card-ring { flex: 0 0 auto; }
+.course-card-info { flex: 1 1 12rem; min-width: 0; }
+.course-card-title { font-weight: 600; overflow-wrap: anywhere; }
+.course-card-meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+.course-badge-stored { color: var(--correct); font-weight: 600; }
+.course-badge-nostore { color: var(--text-muted); }
+.course-card-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); }
+.course-card-actions .btn { padding: 8px 14px; }
+.course-confirm-text { font-size: 0.85rem; color: var(--incorrect); }
+
+/* Anneau de score (liste + détail). */
+.course-ring-wrap { position: relative; width: 72px; height: 72px; }
+.course-ring { width: 100%; height: 100%; }
+.course-ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+.course-ring-fg { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 600ms ease; }
+.ring-low .course-ring-fg { stroke: var(--incorrect); }
+.ring-mid .course-ring-fg { stroke: var(--signature); }
+.ring-high .course-ring-fg { stroke: var(--correct); }
+.course-ring-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; }
+.course-ring-none { display: inline-flex; align-items: center; justify-content: center; width: 72px; height: 72px; color: var(--text-muted); font-size: 1.4rem; }
+
+/* Détail d'un cours. */
+.course-detail-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+.course-detail-scores { font-size: 0.9rem; }
+.course-detail-displayed { color: var(--accent-text); font-weight: 600; }
+.course-detail-review { color: var(--text-muted); font-size: 0.85rem; margin-top: 2px; }
+.course-section-title { font-size: 1rem; margin: var(--space-3) 0 var(--space-1); }
+.course-chart { width: 100%; max-width: 340px; height: auto; }
+.chart-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.chart-dot { fill: var(--accent); }
+.chart-empty { fill: var(--text-muted); font-size: 12px; }
+.course-attempts, .course-quizzes { list-style: none; font-size: 0.9rem; }
+.course-attempts li, .course-quizzes li { padding: 4px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+
+/* Section « révision » du détail : bouton + interrupteur / état non conservé. */
+.course-revise-section { margin-top: var(--space-3); padding-top: var(--space-2); border-top: 1px solid var(--border); display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); }
+.course-switch { display: flex; align-items: center; gap: var(--space-1); font-size: 0.9rem; cursor: pointer; }
+.course-switch input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); flex: 0 0 auto; }
+.course-confirm-remove {
+  width: 100%;
+  padding: var(--space-2);
+  background: var(--signature-bg);
+  border-inline-start: 3px solid var(--signature);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1);
+}
+.course-confirm-remove p { flex: 1 1 100%; margin-bottom: var(--space-1); }
+.course-confirm-remove .btn { padding: 8px 14px; }
+/* État « non conservé » : informatif et non culpabilisant. */
+.course-not-stored-box {
+  width: 100%;
+  padding: var(--space-2);
+  background: var(--accent-soft);
+  border-radius: var(--radius);
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+}
+.course-not-stored-msg { flex: 1 1 14rem; margin: 0; font-size: 0.9rem; color: var(--text); }
+
+/* ============ Corrections diverses (résumé, erreur champ, badge manuel) ============ */
+/* #1 : résumé de génération sur l'écran de révision. */
+.edit-gen-summary { color: var(--text-muted); font-size: 0.85rem; margin-bottom: var(--space-2); }
+
+/* #3 : champ code d'accès en erreur (bloqué côté client). */
+.field-error, .field-error:focus { border-color: var(--incorrect) !important; box-shadow: 0 0 0 3px var(--incorrect-bg) !important; }
+
+/* #10 : badge « question ajoutée manuellement » — visuellement DIFFÉRENT du bloc
+   citation signature des questions IA (pastille accent, pas de bordure signature). */
+.quiz-manual-badge, .result-missed-manual {
+  display: inline-block;
+  color: var(--accent-text); background: var(--accent-soft);
+  border: 1px solid var(--accent); border-radius: 999px;
+  padding: 2px 10px; font-size: 0.8rem; font-weight: 600;
+}
+.quiz-manual-badge { margin-top: var(--space-1); }
+.result-missed-manual { margin-top: var(--space-1); }
+
+/* #6 : aide sous le bouton de révision (détail d'un cours). */
+.course-revise-help { color: var(--text-muted); font-size: 0.8rem; margin: 0; max-width: 32rem; }
+
+/* ============ Anti-débordement (texte du LLM / du document) ============ */
+/* Une longue chaîne sans espaces (URL, mot collé par une extraction PDF, formule)
+   ne doit jamais déborder ni créer de barre horizontale. « anywhere » casse au
+   besoin ; « break-word » sert de repli pour les moteurs plus anciens. */
+.quiz-question,
+.choice,
+.choice-label,
+.quiz-explanation,
+.quiz-source,
+.quiz-source-text,
+.flashcard-face,
+.result-missed li,
+.result-missed .result-missed-q,
+.result-missed .correct-answer,
+.result-missed .result-missed-src,
+textarea {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+/* Le libellé d'une proposition doit pouvoir rétrécir dans le flex de .choice. */
+.choice-label { min-width: 0; }
+
+/* ============ Responsive ============ */
 @media (min-width: 560px) {
-  .app-header h1 { font-size: 1.4rem; }
-  /* Options en trois colonnes quand l'écran est assez large. */
-  .options { grid-template-columns: repeat(3, 1fr); }
   .result-actions { flex-direction: row; }
   .result-actions .btn { flex: 1; }
+  .edit-actions { flex-direction: row; }
+  .edit-actions .btn { flex: 1; }
 }
+
+/* Boutons primaires isolés : pleine largeur sur mobile ; largeur auto alignée à
+   la fin (droite en LTR, gauche en RTL) avec padding généreux sur écran large. */
+@media (min-width: 700px) {
+  .quiz-actions { justify-content: flex-end; }
+  .quiz-actions .btn { width: auto; padding-inline: var(--space-6); }
+  .flashcards-done { align-items: flex-end; }
+  .flashcards-done .btn { width: auto; padding-inline: var(--space-6); }
+}
+
+/* Mobile (< 900px) : le code d'accès et le bouton Générer restent empilés
+   (comportement de base de .generate-row). */

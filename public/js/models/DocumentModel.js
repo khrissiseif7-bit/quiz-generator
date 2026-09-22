@@ -8,9 +8,11 @@
  */
 
 // Bornes de taille. MIN reflète le seuil serveur (limits.js) ; MAX reflète la
-// valeur par défaut de MAX_TEXT_LENGTH côté serveur.
+// valeur par défaut de MAX_TEXT_LENGTH côté serveur (abaissée à 30000 pour
+// éviter les timeouts de génération). WARN = seuil d'avertissement « texte long ».
 export const MIN_LEN = 300;
-export const MAX_LEN = 50000;
+export const MAX_LEN = 30000;
+export const WARN_LEN = 20000;
 
 export class DocumentModel {
   /**
@@ -37,6 +39,7 @@ export class DocumentModel {
       tooLong,
       valid: !tooShort && !tooLong,
       manque: tooShort ? MIN_LEN - length : 0, // caractères manquants
+      long: !tooShort && !tooLong && length > WARN_LEN, // génération longue à prévoir
     });
   }
 

@@ -69,16 +69,62 @@ export class PdfExtractor {
 
 /**
  * Reconstruit le texte d'une page à partir des « items » de pdf.js.
- * Chaque item porte le texte (str) et un drapeau hasEOL (fin de ligne).
- * @param {Array<{str:string, hasEOL:boolean}>} items
+ *
+ * pdf.js ne renvoie PAS toujours d'espace explicite entre les mots : il faut le
+ * déduire des positions. Chaque item porte str, transform ([a,b,c,d,x,y]),
+ * width et hasEOL. On procède ainsi :
+ *   - fin de ligne : item.hasEOL, ou saut vertical (|Δy| > 0,5 × taille police) ;
+ *   - même ligne : on mesure l'ÉCART horizontal entre les deux items ; s'il
+ *     dépasse ~0,2 × taille de police, on insère une espace.
+ *
+ * L'écart est calculé de façon INDÉPENDANTE DU SENS de lecture :
+ *   - en LTR (latin), x croît : l'écart est x_courant − (x_préc + largeur_préc) ;
+ *   - en RTL (arabe), x décroît : l'écart est x_préc − (x_courant + largeur_courant).
+ * On prend le maximum des deux, donc la détection marche dans les deux sens.
+ *
+ * @param {Array<{str:string, transform:number[], width:number, hasEOL:boolean}>} items
  * @returns {string}
  */
 export function itemsVersTexte(items) {
   let out = "";
+  let prec = null; // { gauche, droite, y, taille } de l'item précédent sur la ligne
+
   for (const it of items) {
-    if (typeof it.str === "string") out += it.str;
-    if (it.hasEOL) out += "\n";
+    if (typeof it.str !== "string") {
+      if (it.hasEOL) { out += "\n"; prec = null; }
+      continue;
+    }
+
+    if (it.str.length > 0) {
+      const t = it.transform || [1, 0, 0, 1, 0, 0];
+      const x = t[4];
+      const y = t[5];
+      // Taille de police ≈ échelle verticale du texte.
+      const taille = Math.hypot(t[2], t[3]) || Math.abs(t[3]) || Math.abs(t[0]) || 1;
+      const largeur = it.width || 0;
+      const gauche = x;
+      const droite = x + largeur;
+
+      if (prec) {
+        const dy = Math.abs(y - prec.y);
+        if (dy > prec.taille * 0.5) {
+          // Nouvelle ligne détectée par la position verticale.
+          if (!/\n$/.test(out)) out += "\n";
+        } else {
+          // Même ligne : écart horizontal (indépendant du sens de lecture).
+          const ecart = Math.max(gauche - prec.droite, prec.gauche - droite);
+          const seuil = Math.max(prec.taille, taille) * 0.2;
+          if (ecart > seuil && !/\s$/.test(out) && !/^\s/.test(it.str)) out += " ";
+        }
+      }
+
+      out += it.str;
+      prec = { gauche, droite, y, taille };
+    }
+
+    if (it.hasEOL) { out += "\n"; prec = null; }
   }
+
   return out;
 }
 

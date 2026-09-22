@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node server/server.js",
-    "dev": "node --watch server/server.js"
+    "dev": "node --watch server/server.js",
+    "test:crud": "node scripts/test-crud.js"
   },
   "//dependencies": "express (serveur/routage), dotenv (.env), ajv (validation du contrat), cors (accès local).",
   "dependencies": {

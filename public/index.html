@@ -6,56 +6,94 @@
   - Ce fichier ne contient AUCUNE logique. Il déclare le squelette des écrans.
     Le JS (Views) manipule le DOM ; le HTML reste passif.
   - Un seul écran visible à la fois (attribut [hidden] piloté par les Views) :
-      1. #screen-upload      -> collage du texte + options + code d'accès
-      2. #screen-loading     -> attente animée (génération 15–25 s)
-      3. #screen-quiz        -> une question à la fois
-      4. #screen-result      -> score et récapitulatif
-      5. #screen-flashcards  -> cartes de révision
+      1. #screen-upload / 2. #screen-loading / 3. #screen-quiz
+      4. #screen-result / 5. #screen-flashcards
   - dir="rtl" est posé dynamiquement sur <html> par I18n.js pour l'arabe.
-  - NB : le dépôt de PDF n'est pas dans le périmètre de cette étape (texte seul).
 -->
 <html lang="fr" dir="ltr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#2563eb" />
+  <meta name="theme-color" content="#45688a" />
   <title>Générateur de Quiz</title>
-  <!-- Favicon vide : évite une requête /favicon.ico inutile (404). -->
   <link rel="icon" href="data:," />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
+  <!-- En-tête fin : nom de l'app + sous-titre discret. La langue du quiz est
+       désormais dans les options de l'écran d'upload (et non plus ici). -->
   <header class="app-header">
-    <h1 data-i18n="app_title">Générateur de Quiz</h1>
+    <div class="app-brand">
+      <span class="app-name" data-i18n="app_title">Générateur de Quiz</span>
+      <!-- Promesse produit dès l'accueil : 1re apparition de la couleur --signature. -->
+      <span class="app-verified">
+        <svg class="app-verified-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+        <span data-i18n="app_verified">Chaque question est vérifiée dans votre document</span>
+      </span>
+    </div>
+    <nav class="app-nav">
+      <button id="btn-nav-courses" type="button" class="app-nav-btn" data-i18n="nav_courses">Mes cours</button>
+    </nav>
   </header>
 
   <main class="app-main">
 
     <!-- ================= ÉCRAN 1 : UPLOAD ================= -->
     <section id="screen-upload" class="screen" aria-labelledby="upload-title">
-      <h2 id="upload-title" data-i18n="upload_title">Colle ton cours</h2>
+      <h2 id="upload-title" data-i18n="upload_title">Votre cours</h2>
 
-      <!-- Zone de dépôt PDF (drag & drop + clic). Extraction via pdf.js (client). -->
-      <div class="field">
-        <label data-i18n="upload_pdf_label">Importer un PDF</label>
-        <div id="pdf-dropzone" class="dropzone" role="button" tabindex="0">
-          <input id="file-pdf" type="file" accept="application/pdf,.pdf" aria-label="PDF" hidden />
-          <span class="dropzone-text" data-i18n="upload_pdf">Dépose un PDF ici ou clique pour choisir</span>
+      <!-- Sources : deux colonnes de MÊME hauteur (≥900px), empilées sur mobile. -->
+      <div class="upload-sources">
+        <div class="upload-pdf">
+          <div class="field">
+            <label data-i18n="upload_pdf_label">Importer un PDF</label>
+            <div id="pdf-dropzone" class="dropzone" role="button" tabindex="0">
+              <input id="file-pdf" type="file" accept="application/pdf,.pdf" aria-label="PDF" hidden />
+              <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 15V3" />
+                <path d="M8 7l4-4 4 4" />
+                <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+              </svg>
+              <span class="dropzone-text" data-i18n="upload_pdf">Déposez un PDF ici ou cliquez pour choisir</span>
+            </div>
+            <!-- Zone message PDF (emplacement réservé) : progression + résumé (info),
+                 PDF scanné (avertissement), erreurs de lecture (erreur). -->
+            <div class="msg-slot">
+              <p id="pdf-message" class="msg" role="status" hidden>
+                <svg class="msg-ico msg-ico-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <svg class="msg-ico msg-ico-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <svg class="msg-ico msg-ico-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                <span class="msg-text"></span>
+              </p>
+            </div>
+          </div>
         </div>
-        <p id="pdf-progress" class="pdf-progress" role="status" hidden></p>
-        <p id="pdf-summary" class="pdf-summary" hidden></p>
-      </div>
 
-      <div class="upload-or" data-i18n="upload_or">— ou —</div>
+        <div class="upload-or" data-i18n="upload_or">ou</div>
 
-      <div class="field">
-        <label for="textarea-source" data-i18n="upload_paste">Texte du cours</label>
-        <textarea id="textarea-source" rows="10"
-          data-i18n-placeholder="upload_placeholder"
-          placeholder="Colle ici le texte de ton cours…"></textarea>
-        <div class="counter-row">
-          <span id="char-counter" class="char-counter">0</span>
-          <span id="length-hint" class="length-hint" role="status"></span>
+        <div class="upload-text">
+          <div class="field">
+            <label for="textarea-source" data-i18n="upload_paste">Texte du cours</label>
+            <textarea id="textarea-source" rows="8"
+              data-i18n-placeholder="upload_placeholder"
+              placeholder="Collez ici le texte du cours…"></textarea>
+            <div class="counter-row">
+              <span id="char-counter" class="char-counter"></span>
+            </div>
+            <!-- Zone message texte (emplacement réservé) : avertissement « texte long ».
+                 Le trop-court / trop-long est porté par le compteur ci-dessus. -->
+            <div class="msg-slot">
+              <p id="length-warning" class="msg msg--warn" role="status" hidden>
+                <svg class="msg-ico msg-ico-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span class="msg-text"></span>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -68,7 +106,6 @@
             <option value="15">15</option>
           </select>
         </div>
-
         <div class="field">
           <label for="select-difficulty" data-i18n="label_difficulty">Difficulté</label>
           <select id="select-difficulty">
@@ -77,10 +114,9 @@
             <option value="hard" data-i18n="diff_hard">Difficile</option>
           </select>
         </div>
-
         <div class="field">
-          <label for="select-language" data-i18n="label_language">Langue</label>
-          <select id="select-language">
+          <label for="select-language" data-i18n="label_quiz_language">Langue du quiz</label>
+          <select id="select-language" aria-label="Langue du quiz">
             <option value="auto" selected data-i18n="lang_auto">Auto</option>
             <option value="fr" data-i18n="lang_fr">Français</option>
             <option value="ar" data-i18n="lang_ar">Arabe</option>
@@ -89,16 +125,69 @@
         </div>
       </div>
 
-      <div class="field">
-        <label for="input-access-code" data-i18n="label_access_code">Code d'accès</label>
-        <input id="input-access-code" type="password" autocomplete="off"
-          data-i18n-placeholder="access_placeholder" placeholder="Code d'accès" />
+      <!-- Options « cours » : apparaissent quand il y a un cours exploitable. -->
+      <div id="course-options" class="course-options" hidden>
+        <label class="course-check">
+          <input type="checkbox" id="check-attach" checked />
+          <span data-i18n="attach_courses">Rattacher à mes cours</span>
+        </label>
+        <label class="course-check">
+          <input type="checkbox" id="check-store-text" checked />
+          <span data-i18n="store_text">Conserver le texte du cours sur le serveur</span>
+        </label>
+        <p class="course-store-note" data-i18n="store_text_note">Le texte est conservé pour vous permettre de réviser sans re-déposer le document. Vous pouvez le supprimer à tout moment depuis Mes cours.</p>
       </div>
 
-      <p id="upload-error" class="error-message" role="alert" hidden></p>
+      <!-- Bouton discret : visible seulement s'il y a du contenu à effacer. -->
+      <div class="upload-secondary-actions">
+        <button id="btn-reset" type="button" class="btn-ghost"
+          data-i18n="btn_reset" hidden>Réinitialiser</button>
+      </div>
 
-      <button id="btn-generate" type="button" class="btn btn-primary"
-        data-i18n="btn_generate" disabled>Générer le quiz</button>
+      <!-- Code d'accès (secondaire, étroit) + génération sur une même ligne.
+           L'erreur d'ENVOI s'affiche JUSTE au-dessus du bouton Générer (dans sa
+           colonne), au plus près de l'action qui l'a provoquée. -->
+      <div class="generate-row">
+        <div class="field field-access">
+          <label for="input-access-code" data-i18n="label_access_code">Code d'accès</label>
+          <input id="input-access-code" type="password" autocomplete="off"
+            data-i18n-placeholder="access_placeholder" placeholder="Code d'accès" />
+        </div>
+        <div class="generate-col">
+          <div class="msg-slot">
+            <p id="upload-error" class="msg msg--error" role="alert" hidden>
+              <svg class="msg-ico msg-ico-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <span class="msg-text"></span>
+            </p>
+          </div>
+          <button id="btn-generate" type="button" class="btn btn-primary"
+            data-i18n="btn_generate" disabled>Générer le quiz</button>
+        </div>
+      </div>
+
+      <!-- Ouvrir un quiz existant par code (replié par défaut pour rester compact). -->
+      <details class="open-quiz">
+        <summary data-i18n="open_quiz_label">Ouvrir un quiz existant par code</summary>
+        <div class="open-quiz-body">
+          <div class="field">
+            <label for="input-open-code" data-i18n="open_code_label">Code du quiz</label>
+            <input id="input-open-code" type="text" maxlength="6" autocomplete="off"
+              data-i18n-placeholder="open_code_ph" placeholder="6 caractères" />
+          </div>
+          <div class="field">
+            <label for="input-open-key" data-i18n="open_key_label">Clé propriétaire (facultatif)</label>
+            <input id="input-open-key" type="text" autocomplete="off"
+              data-i18n-placeholder="open_key_ph" placeholder="pour modifier le quiz" />
+          </div>
+          <button id="btn-open-quiz" type="button" class="btn btn-secondary" data-i18n="btn_open_quiz">Ouvrir</button>
+          <div class="msg-slot">
+            <p id="open-error" class="msg msg--error" role="alert" hidden>
+              <svg class="msg-ico msg-ico-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <span class="msg-text"></span>
+            </p>
+          </div>
+        </div>
+      </details>
     </section>
 
     <!-- ================= ÉCRAN 2 : ATTENTE ================= -->
@@ -106,31 +195,70 @@
       <h2 id="loading-title" data-i18n="loading_title">Génération en cours…</h2>
 
       <div class="spinner" aria-hidden="true"></div>
-      <div class="progress-bar" aria-hidden="true"><span></span></div>
+      <p class="loading-eta" id="loading-eta" role="status" aria-live="polite"></p>
+      <div class="progress-bar" aria-hidden="true"><span id="loading-fill"></span></div>
 
       <ol class="loading-steps" id="loading-steps">
-        <li data-step="0" data-i18n="loading_step1">Préparation du texte</li>
-        <li data-step="1" data-i18n="loading_step2">Génération des questions</li>
-        <li data-step="2" data-i18n="loading_step3">Vérification des réponses</li>
+        <li data-step="0"><span class="step-icon" aria-hidden="true"></span><span class="step-text" data-i18n="loading_step1">Préparation du texte</span></li>
+        <li data-step="1"><span class="step-icon" aria-hidden="true"></span><span class="step-text" data-i18n="loading_step2">Génération des questions</span></li>
+        <li data-step="2"><span class="step-icon" aria-hidden="true"></span><span class="step-text" data-i18n="loading_step3">Vérification des réponses</span></li>
       </ol>
+
+      <button id="btn-cancel" type="button" class="btn btn-ghost btn-cancel" data-i18n="btn_cancel">Annuler</button>
+      <p class="cancel-note" data-i18n="cancel_note">La génération déjà lancée côté serveur ne peut pas être interrompue.</p>
+    </section>
+
+    <!-- ============ ÉCRAN : VÉRIFIER LES QUESTIONS (édition) ============ -->
+    <section id="screen-edit" class="screen" aria-labelledby="edit-title" hidden>
+      <h2 id="edit-title" data-i18n="edit_title">Vérifier les questions</h2>
+      <p class="edit-intro" data-i18n="edit_intro">Relisez, corrigez ou complétez les questions avant de commencer.</p>
+      <p id="edit-gen-summary" class="edit-gen-summary" role="status" hidden></p>
+
+      <ol id="edit-list" class="edit-list"></ol>
+
+      <!-- Formulaire d'ajout (rempli par JS quand on clique « Ajouter »). -->
+      <div id="edit-add-zone" class="edit-add-zone"></div>
+      <div class="edit-add-row">
+        <button id="btn-add-question" type="button" class="btn btn-secondary"
+          data-i18n="btn_add_question">+ Ajouter une question</button>
+      </div>
+
+      <div class="msg-slot">
+        <p id="edit-message" class="msg msg--error" role="alert" hidden>
+          <svg class="msg-ico msg-ico-error" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span class="msg-text"></span>
+        </p>
+      </div>
+
+      <!-- Panneau d'enregistrement : code + clé propriétaire + copier (rempli par JS). -->
+      <div id="edit-save-panel" class="edit-save-panel" hidden></div>
+
+      <div class="edit-actions">
+        <button id="btn-start-quiz" type="button" class="btn btn-primary" data-i18n="btn_start_quiz">Commencer le quiz</button>
+        <button id="btn-save-quiz" type="button" class="btn btn-secondary" data-i18n="btn_save_quiz">Enregistrer ce quiz</button>
+      </div>
     </section>
 
     <!-- ================= ÉCRAN 3 : QUIZ ================= -->
     <section id="screen-quiz" class="screen" aria-labelledby="quiz-heading" hidden>
+      <div class="quiz-progress-bar" aria-hidden="true"><span id="quiz-progress-fill"></span></div>
       <p class="quiz-progress"><span id="quiz-progress"></span></p>
-      <h2 id="quiz-heading" class="quiz-question" aria-live="polite"></h2>
+      <h2 id="quiz-heading" class="quiz-question"></h2>
 
       <ul id="quiz-choices" class="quiz-choices"></ul>
+      <p class="quiz-shortcuts" data-i18n="quiz_shortcuts">Raccourcis : 1–4 pour répondre, Entrée pour continuer</p>
 
-      <!-- Bloc de feedback (caché jusqu'à la réponse) -->
-      <div id="quiz-feedback" class="quiz-feedback" hidden>
+      <!-- Bloc de feedback (caché jusqu'à la réponse), annoncé aux lecteurs d'écran. -->
+      <div id="quiz-feedback" class="quiz-feedback" aria-live="polite" hidden>
         <p id="quiz-verdict" class="quiz-verdict"></p>
         <p id="quiz-explanation" class="quiz-explanation"></p>
-        <!-- Point clé du projet : l'extrait du cours, mis en valeur -->
-        <blockquote class="quiz-source">
-          <span class="quiz-source-intro" data-i18n="source_intro">D'après ton cours :</span>
+        <!-- Question IA : extrait du cours (libellé + page) rempli par la View. -->
+        <blockquote id="quiz-source-block" class="quiz-source">
+          <span id="quiz-source-intro" class="quiz-source-intro"></span>
           <span id="quiz-source-text" class="quiz-source-text"></span>
         </blockquote>
+        <!-- Question ajoutée à la main : badge distinct (jamais « page null »). -->
+        <p id="quiz-manual-badge" class="quiz-manual-badge" hidden></p>
       </div>
 
       <div class="quiz-actions">
@@ -142,10 +270,19 @@
     <section id="screen-result" class="screen" aria-labelledby="result-title" hidden>
       <h2 id="result-title" data-i18n="result_title">Résultat</h2>
 
-      <p class="result-score">
-        <strong id="result-score">0 / 0</strong>
-        <span id="result-percent" class="result-percent"></span>
-      </p>
+      <div class="result-ring-wrap">
+        <svg class="result-ring" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="result-ring-bg" cx="60" cy="60" r="52" />
+          <circle id="result-ring-fill" class="result-ring-fill" cx="60" cy="60" r="52" />
+        </svg>
+        <div class="result-ring-center">
+          <span id="result-percent" class="result-percent"></span>
+          <span id="result-score" class="result-score"></span>
+        </div>
+      </div>
+      <p class="result-caption" data-i18n="result_caption">Bonnes réponses</p>
+      <!-- Statistiques du quiz enregistré (moyenne/meilleur), affichées après POST /attempts. -->
+      <p id="result-stats" class="result-stats" role="status" hidden></p>
 
       <h3 id="result-missed-title" class="result-missed-title" data-i18n="result_missed" hidden>
         Questions à revoir
@@ -153,9 +290,9 @@
       <ol id="result-missed" class="result-missed"></ol>
 
       <div class="result-actions">
-        <button id="btn-replay-errors" type="button" class="btn" data-i18n="btn_replay_errors">Rejouer les erreurs</button>
-        <button id="btn-flashcards" type="button" class="btn" data-i18n="btn_flashcards">Voir les flashcards</button>
-        <button id="btn-new-quiz" type="button" class="btn btn-primary" data-i18n="btn_new_quiz">Nouveau quiz</button>
+        <button id="btn-replay-errors" type="button" class="btn btn-primary" data-i18n="btn_replay_errors">Rejouer les erreurs</button>
+        <button id="btn-flashcards" type="button" class="btn btn-secondary" data-i18n="btn_flashcards">Voir les flashcards</button>
+        <button id="btn-new-quiz" type="button" class="btn btn-secondary" data-i18n="btn_new_quiz">Nouveau quiz</button>
       </div>
     </section>
 
@@ -166,20 +303,42 @@
 
       <div id="flashcard-card" class="flashcard" role="button" tabindex="0"
         aria-live="polite" data-face="front">
-        <div class="flashcard-face flashcard-front" id="flashcard-front"></div>
-        <div class="flashcard-face flashcard-back" id="flashcard-back"></div>
+        <div class="flashcard-inner">
+          <div class="flashcard-face flashcard-front" id="flashcard-front"></div>
+          <div class="flashcard-face flashcard-back" id="flashcard-back"></div>
+        </div>
         <span class="flashcard-hint" data-i18n="flashcard_hint">Touche la carte pour la retourner</span>
       </div>
 
       <div class="flashcard-actions">
-        <button id="btn-review" type="button" class="btn btn-review" data-i18n="btn_review">À revoir</button>
-        <button id="btn-known" type="button" class="btn btn-known" data-i18n="btn_known">Je savais</button>
+        <button id="btn-review" type="button" class="btn btn-secondary" data-i18n="btn_review">À revoir</button>
+        <button id="btn-known" type="button" class="btn btn-primary" data-i18n="btn_known">Je savais</button>
       </div>
 
       <div id="flashcards-done" class="flashcards-done" hidden>
         <p data-i18n="flashcards_done">Paquet terminé 🎉</p>
         <button id="btn-flashcards-back" type="button" class="btn btn-primary" data-i18n="btn_back_result">Retour au résultat</button>
       </div>
+    </section>
+
+    <!-- ============ ÉCRAN : MES COURS ============ -->
+    <section id="screen-courses" class="screen" aria-labelledby="courses-title" hidden>
+      <div class="courses-head">
+        <h2 id="courses-title" data-i18n="courses_title">Mes cours</h2>
+        <button id="btn-courses-home" type="button" class="btn-ghost" data-i18n="nav_home">← Accueil</button>
+      </div>
+      <p id="courses-loading" class="edit-intro" data-i18n="courses_loading" hidden>Chargement…</p>
+      <p id="courses-empty" class="edit-intro" data-i18n="courses_empty" hidden>Aucun cours enregistré sur ce navigateur.</p>
+      <ol id="courses-list" class="courses-list"></ol>
+    </section>
+
+    <!-- ============ ÉCRAN : DÉTAIL D'UN COURS ============ -->
+    <section id="screen-course-detail" class="screen" aria-labelledby="course-detail-title" hidden>
+      <div class="courses-head">
+        <h2 id="course-detail-title" class="course-detail-title"></h2>
+        <button id="btn-course-back" type="button" class="btn-ghost" data-i18n="nav_courses_back">← Mes cours</button>
+      </div>
+      <div id="course-detail-body"></div>
     </section>
 
   </main>

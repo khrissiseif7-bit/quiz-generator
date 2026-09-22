@@ -90,3 +90,92 @@ Format d'une erreur :
 ```json
 { "error": { "code": 429, "message": "string" } }
 ```
+
+---
+
+# Contrat REST — persistance (quiz, questions, tentatives, cours)
+
+> **PRINCIPE DIRECTEUR : on stocke le QUIZ, jamais le texte du cours.**
+> Le texte source n'est conservé (`courses.text`) que si l'utilisateur coche
+> explicitement « conserver le texte ». Les quiz et questions ne portent aucun
+> texte de cours (seulement `source_length` et l'extrait cité `source_excerpt`).
+
+Persistance en **SQLite** via le module natif `node:sqlite` (Node 22+, aucune
+dépendance). L'en-tête **`X-Access-Code`** est requis sur les **écritures**
+(POST/PUT/DELETE) et sur la génération, mais **pas** sur les **lectures** (GET :
+`/quizzes/:code`, `/quizzes/:code/stats`, `/courses/:code`) — elles ne consomment
+aucun quota LLM et restent protégées par le code de la ressource (6 caractères
+non devinables). Le champ `text` d'un cours reste réservé à la bonne `X-Owner-Key`.
+
+## Sécurité sans compte
+
+- **`code`** : identifiant public de 6 caractères, alphabet sans ambiguïté
+  (ni `0/O`, ni `1/I/L`). Unicité vérifiée en base.
+- **`ownerKey`** : clé propriétaire de 32 caractères, renvoyée **UNE seule fois**
+  à la création. Stockée en base **uniquement sous forme de hash SHA-256**.
+  Fournie via l'en-tête **`X-Owner-Key`** sur les écritures protégées.
+- **`X-Owner-Key` requis** sur : `PUT`/`DELETE` d'un quiz, **tout** le CRUD des
+  questions, `PUT`/`DELETE` d'un cours. Absente/incorrecte → `403 FORBIDDEN`.
+
+## Codes d'erreur homogènes
+
+| Code | `error`            | Quand                                                        |
+|------|--------------------|-------------------------------------------------------------|
+| 400  | `VALIDATION_ERROR` | corps invalide ; `details: [{ field, code }]`               |
+| 401  | `INVALID_CODE`     | `X-Access-Code` manquant/incorrect                          |
+| 403  | `FORBIDDEN`        | `X-Owner-Key` manquante/incorrecte                          |
+| 404  | `NOT_FOUND`        | ressource inexistante                                        |
+| 409  | `CONFLICT`         | règle métier (ex. supprimer sous 3 questions)               |
+| 429  | `RATE_LIMITED`     | `POST /quizzes` > 10/h par IP ; `retryAfterSeconds`         |
+
+## Routes — quiz
+
+| Méthode | Route | Clé prop. | Réponse |
+|---|---|:--:|---|
+| `POST`   | `/quizzes` | — | `201 { code, ownerKey }` |
+| `GET`    | `/quizzes/:code` | — | `200` quiz complet (sans le hash) |
+| `PUT`    | `/quizzes/:code` | ✔ | `200 { code, title }` — titre uniquement |
+| `DELETE` | `/quizzes/:code` | ✔ | `204` |
+| `POST`   | `/quizzes/:code/questions` | ✔ | `201` question créée (`origin: "manual"`) |
+| `PUT`    | `/quizzes/:code/questions/:id` | ✔ | `200` question modifiée |
+| `DELETE` | `/quizzes/:code/questions/:id` | ✔ | `204` ; `409` s'il resterait < 3 questions |
+| `POST`   | `/quizzes/:code/attempts` | — | `201 { attempt, stats }` |
+| `GET`    | `/quizzes/:code/stats` | — | `200 { attempts, averageScore, bestScore }` |
+
+Corps de `POST /quizzes` :
+
+```json
+{
+  "title": "string",
+  "language": "fr | ar | en",
+  "difficulty": "easy | medium | hard",
+  "source_length": 1234,
+  "course_code": "string | null (facultatif)",
+  "questions": [ { "question": "…", "choices": ["a","b","c","d"],
+    "correct_index": 0, "explanation": "…",
+    "source_excerpt": "… | null", "source_page": 1, "origin": "ai | manual" } ],
+  "flashcards": [ { "front": "…", "back": "…", "source_page": 1 } ]
+}
+```
+
+Corps d'une question (`POST`/`PUT .../questions`) — mêmes règles que la
+génération, mais **`source_excerpt` / `source_page` facultatifs** (une question
+ajoutée à la main n'a pas d'extrait) : 4 propositions **distinctes**,
+`correct_index` 0..3, `explanation` non vide, formulations « toutes/aucune des
+réponses » interdites.
+
+## Routes — cours
+
+| Méthode | Route | Clé prop. | Réponse |
+|---|---|:--:|---|
+| `POST`   | `/courses` | — | `201 { code, ownerKey }`, ou `200 { code, existing:true }` si le même texte (empreinte) existe déjà |
+| `GET`    | `/courses/:code` | — | `200` cours + quiz + tentatives + `score` **et** `displayedScore` |
+| `PUT`    | `/courses/:code` | ✔ | `200` — titre + activer/désactiver le stockage du texte |
+| `DELETE` | `/courses/:code` | ✔ | `204` — cascade (quiz, questions, flashcards, tentatives) |
+
+- **Empreinte** : `text_hash = SHA-256(texte minuscules, espaces réduits)`. Un
+  même document re-déposé est reconnu (déduplication).
+- **Score du cours** : à chaque tentative d'un quiz rattaché,
+  `score = 0.6 × (résultat%) + 0.4 × score_précédent` (première fois : résultat brut).
+- **Score affiché** : `displayedScore = score × exp(-jours / 14)`, borné à 0
+  (courbe de l'oubli). Le score stocké ne décroît pas ; seule la valeur affichée baisse.

@@ -196,4 +196,131 @@ npm install
 npm run dev      # node --watch server/server.js
 # puis, dans un autre terminal, banc d'essai du prompt :
 node scripts/test-generate.js test-data/cours-fr.txt
+# et le banc d'essai du CRUD/persistance (base en mémoire, isolée) :
+npm run test:crud
 ```
+
+---
+
+## Persistance & CRUD REST
+
+> **PRINCIPE DIRECTEUR : on stocke le QUIZ, jamais le texte du cours.**
+> L'enregistrement est une **action volontaire** de l'utilisateur, pas un
+> automatisme. Le texte source n'est conservé que si l'utilisateur coche
+> explicitement « conserver le texte » (colonne `courses.text`). Les quiz et
+> questions ne portent aucun texte de cours : seulement sa **longueur**
+> (`source_length`) et l'**extrait cité** (`source_excerpt`), déjà validé par
+> ancrage. Ce principe est rappelé en commentaire dans `quiz.repository.js`.
+>
+> **Transmission ≠ stockage** : pour reconnaître un même document re-déposé, le
+> texte est envoyé à `POST /courses` afin d'y calculer une **empreinte**
+> (`SHA-256` du texte normalisé). Ce texte n'est **persisté** (`courses.text`)
+> que si l'utilisateur a coché « conserver le texte » ; sinon il est utilisé le
+> temps de la requête puis oublié. De plus, `GET /courses/:code` ne renvoie le
+> champ `text` **qu'au propriétaire** (bonne `X-Owner-Key`).
+
+### Base de données
+
+- Moteur : **SQLite** via le module natif **`node:sqlite`** (Node 22+, **aucune
+  dépendance à installer**). En cas d'indisponibilité, le serveur échoue au
+  démarrage avec un message explicite (pas de bascule silencieuse).
+- Fichier : `server/data/quiz.db` (dossier `server/data/` **ignoré par git**).
+  Surchargeable par `DB_PATH` (`:memory:` pour les tests).
+- Schéma : `server/db/schema.sql`, appliqué au démarrage
+  (`CREATE TABLE IF NOT EXISTS`, `PRAGMA foreign_keys = ON`, suppressions en
+  cascade). Connexion : `server/db/connection.js`.
+- **Tout le SQL** vit dans `server/services/quiz.repository.js` (requêtes
+  **préparées**, jamais de concaténation). La création d'un quiz (quiz +
+  questions + flashcards) se fait dans une **transaction**.
+
+### Schéma des tables
+
+| Table | Colonnes principales |
+|---|---|
+| `courses` | `code` (PK), `title`, `text_hash` (UNIQUE), `text_length`, `text` (NULL sauf si conservé), `language`, `score`, `last_attempt_at`, `created_at`, `owner_key_hash` |
+| `quizzes` | `code` (PK), `title`, `language`, `difficulty`, `question_count`, `source_length`, `created_at`, `owner_key_hash`, `course_code` (FK → courses, NULL) |
+| `questions` | `id` (PK), `quiz_code` (FK), `position`, `question`, `choices` (JSON), `correct_index`, `explanation`, `source_excerpt`, `source_page`, `origin` (`ai`\|`manual`) |
+| `flashcards` | `id` (PK), `quiz_code` (FK), `front`, `back`, `source_page` |
+| `attempts` | `id` (PK), `quiz_code` (FK), `score`, `total`, `created_at` |
+
+### Sécurité sans compte
+
+- `code` : 6 caractères, alphabet sans ambiguïté (`security.service.js`).
+- `ownerKey` : 32 caractères, renvoyée **une seule fois** à la création,
+  stockée en **hash SHA-256**. Fournie via `X-Owner-Key` sur les écritures.
+- `X-Owner-Key` requis sur `PUT`/`DELETE` d'un quiz, tout le CRUD des questions,
+  `PUT`/`DELETE` d'un cours (`middlewares/ownerKey.js` → `403 FORBIDDEN`).
+- `X-Access-Code` requis sur les **écritures** (POST/PUT/DELETE) et la génération ;
+  **pas** sur les **lectures** (`GET /quizzes/:code`, `/quizzes/:code/stats`,
+  `/courses/:code`), qui ne consomment aucun quota LLM et restent protégées par le
+  code de la ressource (+ `X-Owner-Key` pour le texte d'un cours).
+- `POST /quizzes` limité à **10/h par IP** (`quota.service.js`).
+
+### Routes REST
+
+| Méthode | Route | Clé prop. | Rôle |
+|---|---|:--:|---|
+| `POST` | `/quizzes` | — | crée un quiz → `201 { code, ownerKey }` |
+| `GET` | `/quizzes/:code` | — | quiz complet (sans le hash) |
+| `PUT` | `/quizzes/:code` | ✔ | modifie le titre |
+| `DELETE` | `/quizzes/:code` | ✔ | supprime le quiz (cascade) |
+| `POST` | `/quizzes/:code/questions` | ✔ | ajoute une question (`origin: manual`) |
+| `PUT` | `/quizzes/:code/questions/:id` | ✔ | modifie une question |
+| `DELETE` | `/quizzes/:code/questions/:id` | ✔ | supprime ; `409` s'il resterait < 3 |
+| `POST` | `/quizzes/:code/attempts` | — | enregistre une tentative |
+| `GET` | `/quizzes/:code/stats` | — | `{ attempts, averageScore, bestScore }` |
+| `POST` | `/courses` | — | crée un cours (ou renvoie l'existant si même texte) |
+| `GET` | `/courses/:code` | — | cours + quiz + tentatives + `score`/`displayedScore` |
+| `PUT` | `/courses/:code` | ✔ | titre + stockage du texte on/off |
+| `DELETE` | `/courses/:code` | ✔ | supprime cours + quiz + tentatives (cascade) |
+
+Contrat complet : **[`docs/contract.md`](docs/contract.md)**.
+
+> **Note d'implémentation (front)** : après enregistrement, chaque modification
+> d'une question passe par l'API puis **re-`GET`** le quiz complet pour
+> resynchroniser les ids réels des questions. C'est simple et toujours correct,
+> mais optimisable : on pourrait mettre à jour l'état local à partir de la
+> réponse de l'API (qui renvoie déjà la question créée/modifiée) et éviter cet
+> aller-retour supplémentaire.
+
+### Score de révision (courbe de l'oubli)
+
+Service **pur** `server/services/score.service.js` :
+
+- après chaque tentative : `score = 0.6 × (résultat%) + 0.4 × score_précédent`
+  (première tentative : résultat brut) ;
+- **score affiché** : `displayedScore = score × exp(-jours / 14)`, borné à 0.
+  Le score **stocké** ne change pas avec le temps ; seule la valeur **affichée**
+  décroît. `GET /courses/:code` renvoie les deux.
+
+### Front — parcours et stockage local
+
+- **Génération → « Vérifier les questions » → quiz** : après génération, un écran
+  d'édition (`EditView`/`EditController`) permet de relire, corriger, ajouter ou
+  supprimer des questions (CRUD **en mémoire** tant que le quiz n'est pas
+  enregistré ; **via l'API** ensuite). Un quiz garde toujours au moins 3 questions.
+- **Enregistrement** : « Enregistrer ce quiz » (`POST /quizzes`) affiche le code
+  et la **clé propriétaire** (à conserver, jamais réaffichée). Si « Rattacher à
+  mes cours » est coché, un cours est créé/retrouvé par empreinte et le quiz y
+  est rattaché ; « Conserver le texte » décide du stockage de `courses.text`.
+- **Recommandation** du nombre de questions : heuristique client instantanée
+  (`SettingsModel.recommendCount`), le sélecteur affiche « N (recommandé) ».
+- **Ouvrir par code** (accueil) : sans clé → le quiz se joue ; avec clé → édition.
+- **Onglet « Mes cours »** : liste des cours connus de CE navigateur, **anneau de
+  score coloré** (rouge < 50, ambre 50-79, vert ≥ 80), détail avec **courbe SVG**
+  des scores et historique, révision directe (si le texte est conservé) ou
+  invitation à re-déposer le document (reconnu par empreinte).
+- **Fin de quiz** : si le quiz est enregistré, la tentative est envoyée **en
+  silence** (`POST /attempts`) et les statistiques (nombre de tentatives, moyenne,
+  meilleur) s'affichent sous le score.
+
+> **`localStorage`** — pour la persistance **durable** entre sessions : sous la
+> clé `quiz-generator:courses`, on ne conserve QUE des identifiants et clés de
+> cours (`{ code, ownerKey, title, language }`) — **jamais** le texte d'un cours
+> ni un quiz. Géré uniquement par `public/js/services/CourseStore.js`.
+>
+> **`sessionStorage`** — pour la durée de la **session de navigation** : le
+> **code d'accès** y est conservé (clé `quiz-generator:accessCode`) afin de ne
+> pas le ressaisir après un rechargement ; il est effacé à la fermeture de
+> l'onglet. Seul usage de sessionStorage (`SettingsModel`). Ce sont les deux
+> seuls stockages navigateur de l'application.

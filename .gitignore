@@ -4,3 +4,6 @@ node_modules/
 # Environnement
 .env
 
+# Base de données SQLite (persistance locale, ne doit pas être commitée)
+server/data/
+

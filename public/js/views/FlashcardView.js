@@ -55,8 +55,8 @@ export class FlashcardView {
     this.back.textContent = back;
     this.card.dataset.face = "front"; // toujours repartir du recto
     this.progress.textContent = this.i18n.t("flashcard_progress", {
-      i: total - remaining + 1,
-      n: remaining,
+      i: this.i18n.isoLTR(total - remaining + 1),
+      n: this.i18n.isoLTR(remaining),
     });
     this.card.hidden = false;
     this.actions.hidden = false;
