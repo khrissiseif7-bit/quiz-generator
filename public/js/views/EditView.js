@@ -9,6 +9,8 @@
  * éviter toute injection. L'état d'INTERFACE (quelle question est en édition /
  * en confirmation de suppression) est local à la View.
  */
+import { pageValide, pageNumero } from "../services/citation.js";
+
 export class EditView {
   /**
    * @param {import("../services/EventBus.js").EventBus} bus
@@ -112,8 +114,8 @@ export class EditView {
     const meta = el("div", "edit-meta");
     if (q.origin === "manual") {
       meta.appendChild(txt(el("span", "edit-badge"), t("edit_manual_badge")));
-    } else if (q.source_page != null) {
-      meta.appendChild(txt(el("span", "edit-page"), t("edit_source_page", { page: q.source_page })));
+    } else if (pageValide(q.source_page)) {
+      meta.appendChild(txt(el("span", "edit-page"), t("edit_source_page", { page: pageNumero(q.source_page) })));
     }
     li.appendChild(meta);
 

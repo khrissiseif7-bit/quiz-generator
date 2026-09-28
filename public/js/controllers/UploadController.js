@@ -25,8 +25,14 @@ export class UploadController {
     // et à chaque annulation : sert à ignorer une réponse tardive après annulation.
     this._genId = 0;
 
+    // Origine du texte courant : "text" (collé/saisi) par défaut, "pdf" après
+    // une extraction PDF réussie. Transmis au backend pour la gestion des pages.
+    this._source = "text";
+
     this.bus.subscribe("ui:text-changed", ({ text }) => {
       this.documentModel.setText(text);
+      // Une saisie/collage manuel repasse la source en "texte" (pas de pages).
+      this._source = "text";
       // Recommandation instantanée du nombre de questions (heuristique client).
       this.bus.publish("app:recommendation", { count: this.settingsModel.recommendCount(text) });
     });
@@ -100,6 +106,7 @@ export class UploadController {
    */
   handleReset() {
     this.documentModel.setText("");
+    this._source = "text"; // plus de PDF chargé
     // Réglages remis à leur valeur par défaut.
     this.settingsModel.setDifficulty("medium");
     this.settingsModel.setLanguage("auto");
@@ -170,6 +177,8 @@ export class UploadController {
       }
 
       this.documentModel.setText(res.text); // met à jour compteur/validité
+      // Source paginée : le backend pourra demander/conserver les numéros de page.
+      this._source = "pdf";
       this.bus.publish("app:recommendation", { count: this.settingsModel.recommendCount(res.text) });
       this.bus.publish("pdf:extracted", { filename: file.name, pages, chars, text: res.text });
     } catch (err) {
@@ -211,7 +220,7 @@ export class UploadController {
     this.bus.publish("app:loading-step", { step: 1 });
 
     try {
-      const payload = { text, ...this.settingsModel.toRequest() };
+      const payload = { text, source: this._source, ...this.settingsModel.toRequest() };
       const donnees = await this.apiClient.generateQuiz(payload, this.settingsModel.getAccessCode());
       if (monTour !== this._genId) return; // annulée pendant l'appel : ne rien écraser
 
@@ -258,7 +267,12 @@ export class UploadController {
     }
     if (s === 400) return code === "TEXT_TOO_SHORT" ? this.i18n.t("err_400_short") : this.i18n.t("err_400");
     if (s === 503) return this.i18n.t("err_daily_quota"); // DAILY_QUOTA_REACHED
-    if (s === 502) return this.i18n.t("err_502");
+    if (s === 502) {
+      // GENERATION_FAILED = trop de questions rejetées par l'ancrage (qualité du cours
+      // ou de la difficulté), distinct de LLM_UNAVAILABLE (Gemini injoignable).
+      if (code === "GENERATION_FAILED") return this.i18n.t("err_generation_failed");
+      return this.i18n.t("err_502");
+    }
     if (s === 0 && (code === "TIMEOUT" || code === "NETWORK")) return this.i18n.t("err_network");
     return this.i18n.t("err_generic");
   }

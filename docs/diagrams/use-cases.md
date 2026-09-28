@@ -40,21 +40,22 @@ flowchart LR
     SYS5(["Contrôler le quota / rate-limit"])
     SYS6(["Vérifier le code d'accès"])
 
-    %% ── Associations Élève ──────────────────────────────────────
+    %% ── Associations Élève (usage principal : générer et jouer ses propres quiz) ──
+    Eleve --> UC1
+    Eleve --> UC2
+    Eleve --> UC3
+    Eleve --> UC4
     Eleve --> UC7
     Eleve --> UC8
     Eleve --> UC9
     Eleve --> UC10
     Eleve --> UC11
+    Eleve --> UC12
 
-    %% ── Associations Enseignant ──────────────────────────────────
-    Enseignant --> UC1
-    Enseignant --> UC2
-    Enseignant --> UC3
-    Enseignant --> UC4
+    %% ── Enseignant : spécialise l'Élève (hérite de ses cas) + édition & partage ──
+    Enseignant -. "«spécialise»" .-> Eleve
     Enseignant --> UC5
     Enseignant --> UC6
-    Enseignant --> UC12
 
     %% ── include : génération depuis texte ───────────────────────
     UC3 -- "«include»" --> SYS6
@@ -93,8 +94,8 @@ flowchart LR
 
 | Acteur | Rôle dans le code |
 |--------|------------------|
-| **Élève** | Ouvre un quiz par son code (6 caractères), joue, consulte les flashcards. N'a pas besoin de code d'accès pour les lectures. |
-| **Enseignant** | Possède le code d'accès (`X-Access-Code`) et la clé propriétaire (`X-Owner-Key`). Dépose un texte ou un PDF, génère, édite, enregistre et suit la progression. |
+| **Élève** | Usage principal du produit : dépose un texte ou un PDF, **génère un quiz** depuis son cours, le joue, rejoue ses erreurs, consulte les flashcards, ouvre un quiz par code, et **suit / révise sa progression**. Le code d'accès partagé reste requis pour générer (barrière anti-abus) ; les lectures (jouer, consulter) sont libres. |
+| **Enseignant** | **Spécialisation de l'Élève** : fait tout ce que fait l'Élève, et s'en distingue par l'**édition** (vérifier / modifier les questions, UC5) et le **partage** (enregistrer un quiz pour le diffuser par code, UC6). Détient la **clé propriétaire** (`X-Owner-Key`) qu'exigent ces écritures sur une ressource. |
 | **Système** | Express + Gemini Flash. Détecte la langue (heuristique sans SDK), appelle Gemini via API REST, valide par ancrage (AJV + fenêtre glissante), gère quota/rate-limit en mémoire. |
 
 ### Règles d'accès réelles (middlewares)

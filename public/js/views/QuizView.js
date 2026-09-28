@@ -7,6 +7,8 @@
  * puis colore les propositions et révèle explication + extrait source à partir
  * des données publiées par le Model.
  */
+import { citationIntro } from "../services/citation.js";
+
 export class QuizView {
   /**
    * @param {import("../services/EventBus.js").EventBus} bus
@@ -124,7 +126,8 @@ export class QuizView {
     // Question IA (avec extrait) -> bloc citation « D'après le cours, page N ».
     // Question ajoutée à la main (pas d'extrait) -> badge distinct, jamais « page null ».
     if (this.current.source_excerpt) {
-      this.sourceIntro.textContent = this.i18n.t("source_intro", { page: this.current.source_page });
+      // Intro centralisée : jamais « page null » (texte collé, page absente…).
+      this.sourceIntro.textContent = citationIntro(this.i18n, this.current.source_page);
       this.sourceText.textContent = this.current.source_excerpt;
       this.sourceBlock.hidden = false;
       this.manualBadge.hidden = true;

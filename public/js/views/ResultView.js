@@ -5,6 +5,8 @@
  * CALCULÉS par QuizModel ; cette vue les affiche et émet les intentions des
  * boutons (rejouer les erreurs / flashcards / nouveau quiz).
  */
+import { citationIntro } from "../services/citation.js";
+
 export class ResultView {
   /**
    * @param {import("../services/EventBus.js").EventBus} bus
@@ -96,7 +98,9 @@ export class ResultView {
         const src = document.createElement("div");
         src.className = "result-missed-src";
         // Pas de guillemets : la bordure --signature et l'italique marquent la citation.
-        src.textContent = `${this.i18n.t("source_intro", { page: item.source_page })} — ${item.source_excerpt}`;
+        // Intro centralisée : jamais « page null » (texte collé, page absente…).
+        const intro = citationIntro(this.i18n, item.source_page);
+        src.textContent = `${intro} — ${item.source_excerpt}`;
         li.appendChild(src);
       } else {
         const badge = document.createElement("div");

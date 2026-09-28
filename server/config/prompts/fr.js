@@ -82,6 +82,12 @@ RÈGLES ABSOLUES :
 - explanation : explique pourquoi la bonne réponse est correcte ET pourquoi
   au moins une mauvaise proposition est fausse. Pour une question difficile,
   mentionne les passages mobilisés et le raisonnement de croisement.
+- Dans explanation, ne désigne JAMAIS une proposition par sa lettre, son numéro
+  ou sa position (n'écris pas « proposition b », « option 2 », « réponse A »,
+  « la première proposition »). Les propositions sont MÉLANGÉES à l'affichage :
+  une lettre ou une position ne veut plus rien dire pour le lecteur. Désigne
+  toujours une proposition par son CONTENU (par ex. « affirmer que les stomates
+  absorbent la lumière est faux, car… »).
 - Répartis les questions sur l'ensemble du cours, pas seulement le début.
 - Conserve la terminologie exacte du cours, y compris les termes en langue
   étrangère.

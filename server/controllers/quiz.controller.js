@@ -32,8 +32,8 @@ const SEUIL_SURVIE = 0.6;
  */
 async function essayerGeneration(params, temperature) {
   const prompt = buildPrompt(params);
-  const quiz = await callLLM(prompt, { temperature });
-  const resultat = validateQuiz(quiz, params.text);
+  const quiz = await callLLM(prompt, { temperature, source: params.source });
+  const resultat = validateQuiz(quiz, params.text, params.source);
   return { quiz, resultat };
 }
 
@@ -99,8 +99,12 @@ export async function generate(req, res, next) {
   const langue = req.body.language === "auto"
     ? detectLanguage(text)
     : req.body.language;
+  // Origine du texte : "pdf" (paginé) ou "text" (collé, sans pagination).
+  // Tout ce qui n'est pas explicitement "pdf" est traité comme du texte collé
+  // (aucun numéro de page demandé ni conservé).
+  const source = req.body.source === "pdf" ? "pdf" : "text";
 
-  const params = { text, language: langue, difficulty, questionCount };
+  const params = { text, language: langue, difficulty, questionCount, source };
 
   try {
     // 3) Premier essai à température normale.
@@ -136,14 +140,23 @@ export async function generate(req, res, next) {
     const { quiz, resultat } = courant;
 
     // 5) Succès : réponse conforme au contrat + meta.
+    // Texte collé (source:"text") : pas de pagination -> source_page forcé à null
+    // (le modèle n'aurait pu produire qu'un numéro inventé).
+    const questions = source === "text"
+      ? resultat.valid.map((q) => ({ ...q, source_page: null }))
+      : resultat.valid;
+    const flashcards = source === "text"
+      ? resultat.flashcards.map((f) => ({ ...f, source_page: null }))
+      : resultat.flashcards;
+
     const dureeMs = Date.now() - debut;
     journaliser(debut, text, langue, questionCount, resultat);
 
     return res.json({
       language: langue,
       title: quiz.title,
-      questions: resultat.valid,
-      flashcards: resultat.flashcards,
+      questions,
+      flashcards,
       meta: {
         rejectedCount: resultat.rejected.length,
         durationMs: dureeMs,

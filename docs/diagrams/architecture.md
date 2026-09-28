@@ -53,12 +53,13 @@ flowchart TB
         subgraph Middlewares["Middlewares"]
             MW_AC["accessCode.js\n(X-Access-Code → 401)"]
             MW_LIM["limits.js\n(taille/params → 400/413)"]
-            MW_OK["ownerKey.js\n(X-Owner-Key SHA-256 → 403)"]
+            MW_OK["ownerKey.js\n(X-Owner-Key SHA-256 → 403 ou 404)"]
         end
 
         subgraph Routes["Routes"]
             R1["POST /generate-quiz"]
-            R2["GET/POST/PUT/DELETE\n/quizzes/:code\n/courses/:code\n…"]
+            R2R["LECTURE (publique)\nGET /quizzes/:code\nGET /courses/:code\nGET /quizzes/:code/stats"]
+            R2W["ÉCRITURE\nPOST /quizzes · POST /courses\nPUT/DELETE quiz|cours\nCRUD questions · POST /attempts"]
         end
 
         subgraph Controllers_Back["Controllers"]
@@ -77,8 +78,20 @@ flowchart TB
         end
 
         R1 --> MW_AC --> MW_LIM --> QCtrl
-        R2 --> MW_AC & MW_OK
-        MW_AC --> QzCtrl & CCtrl
+
+        %% Lecture : accessible sans code d'accès ni clé propriétaire.
+        %% Le texte complet (courses.text) n'est renvoyé que si la bonne
+        %% X-Owner-Key est fournie — cette vérification a lieu DANS le
+        %% controller, pas via le middleware ownerKey.js.
+        R2R --> QzCtrl & CCtrl
+
+        %% Écriture : code d'accès requis pour toutes les routes.
+        R2W --> MW_AC
+
+        %% PUT/DELETE d'un quiz ou d'un cours, et CRUD des questions,
+        %% exigent en plus la bonne X-Owner-Key.
+        MW_AC -- "création\n(POST)" --> QzCtrl & CCtrl
+        MW_AC -- "modification/suppression\n(PUT, DELETE, questions)" --> MW_OK
         MW_OK --> QzCtrl & CCtrl
 
         QCtrl --> QS & LLM & VS
@@ -87,8 +100,8 @@ flowchart TB
         MW_OK --> SS
     end
 
-    subgraph Persistence["💾 SQLite (server/db/)"]
-        DB[("quiz-generator.db\ncourses · quizzes\nquestions · flashcards\nattempts")]
+    subgraph Persistence["💾 SQLite (server/data/)"]
+        DB[("quiz.db\ncourses · quizzes\nquestions · flashcards\nattempts")]
     end
 
     subgraph External["🌐 API externe"]
@@ -97,8 +110,8 @@ flowchart TB
 
     %% Liens navigateur ↔ backend
     AC -- "POST /generate-quiz\n[X-Access-Code]\n{text, language, difficulty, questionCount}" --> R1
-    QAC -- "REST CRUD\n[X-Access-Code]\n[X-Owner-Key]" --> R2
-    R1 & R2 -- "JSON" --> AC & QAC
+    QAC -- "REST CRUD\n[X-Access-Code sur écriture]\n[X-Owner-Key sur modif/suppr]" --> R2R & R2W
+    R1 & R2R & R2W -- "JSON" --> AC & QAC
 
     %% Backend ↔ SQLite
     REPO -- "DatabaseSync\n(requêtes préparées)" --> DB
@@ -111,7 +124,7 @@ flowchart TB
     note1["⚠️ Le texte du cours transite\nvers Gemini uniquement.\nIl N'EST PAS stocké en base\nsauf si storeText=true\n(courses.text, NULL par défaut)"]
     style note1 fill:#fff8dc,stroke:#c8a000,color:#333
     LLM -.->|texte source| note1
-    DB -.->|courses.text (nullable)| note1
+    DB -.->|courses.text nullable| note1
 ```
 
 ## Légende des flux principaux
@@ -123,18 +136,38 @@ flowchart TB
 | `quiz.repository → SQLite` | Seuls le quiz, les questions (avec `source_excerpt`) et les métadonnées sont persistés. **Jamais le texte complet du cours**, sauf `courses.text` si `storeText=true`. |
 | `QuizApiClient → REST CRUD` | Enregistrement, lecture, modification et suppression des quiz, questions, cours et tentatives. |
 | `CourseStore → localStorage` | Persistance locale (dans le navigateur) des codes et clés des cours créés depuis ce navigateur. |
+| `R2R` (lecture) | Consultation d'un quiz, d'un cours ou de ses statistiques : accessible sans code d'accès, protégée uniquement par le code à 6 caractères non devinable. Nécessaire pour que l'onglet « Mes cours » fonctionne après un rechargement de page, sans ressaisie du code d'accès. |
+| `R2W` (écriture) | Création, modification, suppression : exige toujours le code d'accès. La modification/suppression d'un quiz ou d'un cours, ainsi que le CRUD des questions, exige en plus la bonne `X-Owner-Key`. Le middleware `ownerKey.js` renvoie **403** si la clé est absente ou incorrecte, **404** si la ressource n'existe pas. |
 
 ## Principe de confidentialité du texte (du code vers le schéma)
 
 ```
-DocumentModel (RAM) ──► ApiClient ──► /generate-quiz ──► llm.service ──► Gemini
-                                                       │
-                                                       └──► validation.service (ancrage)
-                                                                    │
-                                                                    ▼
-                                          quiz.repository → questions.source_excerpt (extrait, pas le texte entier)
+DocumentModel (RAM) ──► ApiClient ──► POST /generate-quiz ──► llm.service ──► Gemini
+                                            │
+                                            └──► validation.service (ancrage)
+                                                         │
+                                                         ▼
+                                   quiz validé (questions + source_excerpt) renvoyé au
+                                   navigateur — la génération ne persiste RIEN en base
+
+navigateur ──► QuizApiClient ──► POST /quizzes ──► quizzes.controller ──► quiz.repository
+                                                                                │
+                                                                                ▼
+                                     questions.source_excerpt (extrait cité, jamais le texte entier)
 
 courses.text (SQLite) ← courses.controller ← POST /courses
   ╰── NULL par défaut
   ╰── non-NULL uniquement si body.storeText === true
 ```
+
+## Note sur l'évolution de ce schéma (post-correctif)
+
+Une version antérieure de ce diagramme faisait passer **toutes** les routes
+`/quizzes/:code` et `/courses/:code` (lecture comme écriture) par
+`accessCode.js` et `ownerKey.js`. Cela provoquait un bug réel : l'onglet
+« Mes cours » recevait une erreur 401 après un rechargement de page, car le
+code d'accès n'est conservé qu'en **mémoire** côté client (jamais dans
+`localStorage` ni `sessionStorage` — voir `SettingsModel.js`) : il est oublié
+au rechargement (F5) et n'était donc plus transmis. Le correctif a consisté à séparer les routes de lecture
+(consultation, sans coût de quota LLM) des routes d'écriture, en ne
+protégeant les premières que par leur code non devinable.

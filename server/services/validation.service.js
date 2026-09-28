@@ -68,6 +68,41 @@ const schemaFlashcard = {
 const validerQuestion = ajv.compile(schemaQuestion);
 const validerFlashcard = ajv.compile(schemaFlashcard);
 
+// Variantes SANS numéro de page : utilisées quand la source est un TEXTE COLLÉ
+// (source:"text"), pour lequel il n'existe aucune pagination. source_page y est
+// FACULTATIF (et forcé à null par le controller). Le reste des règles est
+// identique (4 propositions, ancrage de source_excerpt, etc.).
+const schemaQuestionSansPage = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id", "type", "difficulty", "question", "choices",
+    "correct_index", "explanation", "source_excerpt"],
+  properties: {
+    id: { type: "string", minLength: 1 },
+    type: { const: "mcq" },
+    difficulty: { enum: ["easy", "medium", "hard"] },
+    question: { type: "string", minLength: 1 },
+    choices: { type: "array", minItems: 4, maxItems: 4, items: { type: "string", minLength: 1 } },
+    correct_index: { type: "integer", minimum: 0, maximum: 3 },
+    explanation: { type: "string", minLength: 1 },
+    source_excerpt: { type: "string", minLength: 1 },
+    source_page: { type: ["integer", "null"] },
+  },
+};
+const schemaFlashcardSansPage = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id", "front", "back"],
+  properties: {
+    id: { type: "string", minLength: 1 },
+    front: { type: "string", minLength: 1 },
+    back: { type: "string", minLength: 1 },
+    source_page: { type: ["integer", "null"] },
+  },
+};
+const validerQuestionSansPage = ajv.compile(schemaQuestionSansPage);
+const validerFlashcardSansPage = ajv.compile(schemaFlashcardSansPage);
+
 // Longueur minimale exigée pour une explication utile.
 const EXPLICATION_MIN = 40;
 
@@ -138,6 +173,41 @@ function extraitAncre(extrait, texteNorm, motsTexte) {
   return false;
 }
 
+// Détection d'une explication qui désigne une proposition par sa LETTRE, son
+// NUMÉRO ou sa POSITION (« proposition b », « option 2 », « réponse A », « la
+// première proposition »…). Les propositions étant mélangées à l'affichage
+// (Fisher-Yates côté client), une telle référence ne correspond plus à rien :
+// la question est rejetée (EXPLANATION_POSITIONAL). Couvre fr, en et ar.
+const MOTIFS_POSITIONNELS = [
+  // Latin — désignateur + lettre a–d isolée (non suivie d'une autre lettre).
+  /\b(?:propositions?|r[ée]ponses?|options?|choix|answers?|choices?|assertions?|affirmations?|statements?)\b[\s:'"«»().\-]{1,4}[a-d](?=[\s.,;:!?)\]»"]|$)/iu,
+  // Latin — proposition/option/choix + chiffre 1–4.
+  /\b(?:propositions?|options?|choix|choices?)\b[\s:'"«»().\-]{0,4}[1-4](?![\p{L}\p{N}])/iu,
+  // Latin — marqueur explicite de numéro + chiffre 1–4.
+  /\b(?:num[ée]ro|number|n[°o]\.?)\s*[1-4](?![\p{L}\p{N}])/iu,
+  // Latin — ordinal + désignateur.
+  /\b(?:premi[èe]res?|deuxi[èe]mes?|troisi[èe]mes?|quatri[èe]mes?|first|second|third|fourth)\s+(?:propositions?|r[ée]ponses?|options?|choix|answers?|choices?)\b/iu,
+  // Latin — « position 1..4 ».
+  /\bpositions?\b[\s:'"().\-]{0,4}[1-4](?![\p{L}\p{N}])/iu,
+  // Arabe — désignateur + lettre d'option (أ ب ج د) isolée.
+  /(?:الخيار|الإجابة|الاجابة|الاقتراح|البديل|الجواب)[\s:،()\-]{0,4}[أبجد](?=[\s.،؛:!؟)\]»"]|$)/u,
+  // Arabe — désignateur + ordinal.
+  /(?:الخيار|الإجابة|الاجابة|الاقتراح|البديل|الجواب)[\s:،()\-]{0,5}(?:الأول|الثاني|الثالث|الرابع|الأولى|الثانية|الثالثة|الرابعة)/u,
+  // Arabe — désignateur + chiffre 1..4.
+  /(?:الخيار|الإجابة|الاجابة|الاقتراح|البديل|الجواب)[\s:،()\-]{0,4}[1-4](?![\p{L}\p{N}])/u,
+];
+
+/**
+ * Indique si une explication désigne une proposition par sa lettre, son numéro
+ * ou sa position (référence devenue fausse après le mélange des propositions).
+ * @param {string} explication
+ * @returns {boolean}
+ */
+function explicationPositionnelle(explication) {
+  const s = String(explication || "");
+  return MOTIFS_POSITIONNELS.some((re) => re.test(s));
+}
+
 /**
  * Applique les vérifications sémantiques à une question déjà valide au schéma.
  * @param {object} q - La question.
@@ -164,6 +234,12 @@ function verifierSemantique(q, texteNorm, motsTexte) {
     }
   }
 
+  // L'explication ne doit pas désigner une proposition par sa lettre, son
+  // numéro ou sa position (incohérent avec le mélange des propositions).
+  if (explicationPositionnelle(q.explanation)) {
+    return "EXPLANATION_POSITIONAL";
+  }
+
   // Ancrage : l'extrait doit provenir du cours.
   if (!extraitAncre(q.source_excerpt, texteNorm, motsTexte)) {
     return "EXCERPT_NOT_FOUND";
@@ -176,19 +252,26 @@ function verifierSemantique(q, texteNorm, motsTexte) {
  * Valide un quiz produit par le LLM contre le contrat et le texte source.
  * @param {any} quiz - Objet quiz brut renvoyé par llm.service.
  * @param {string} sourceText - Texte source original (pour l'ancrage).
+ * @param {"pdf"|"text"} [source="pdf"] - Origine du texte. Si "text" (texte collé,
+ *        sans pagination), source_page est facultatif (schéma sans page).
  * @returns {{valid:object[], rejected:{reason:string, question:object}[], flashcards:object[]}}
  */
-export function validateQuiz(quiz, sourceText) {
+export function validateQuiz(quiz, sourceText, source = "pdf") {
   const valid = [];
   const rejected = [];
+
+  // Sans pagination pour un texte collé : source_page facultatif.
+  const sansPage = source === "text";
+  const valideQuestion = sansPage ? validerQuestionSansPage : validerQuestion;
+  const valideFlashcard = sansPage ? validerFlashcardSansPage : validerFlashcard;
 
   const texteNorm = normaliser(sourceText);
   const motsTexte = texteNorm.split(" ");
 
   const questions = Array.isArray(quiz?.questions) ? quiz.questions : [];
   for (const q of questions) {
-    // 1) Schéma strict.
-    if (!validerQuestion(q)) {
+    // 1) Schéma strict (avec ou sans source_page selon la source).
+    if (!valideQuestion(q)) {
       rejected.push({ reason: "SCHEMA_INVALID", question: q });
       continue;
     }
@@ -203,7 +286,7 @@ export function validateQuiz(quiz, sourceText) {
 
   // Flashcards : on ne garde que celles conformes au schéma (pas d'ancrage exigé).
   const flashcards = (Array.isArray(quiz?.flashcards) ? quiz.flashcards : [])
-    .filter((f) => validerFlashcard(f));
+    .filter((f) => valideFlashcard(f));
 
   return { valid, rejected, flashcards };
 }

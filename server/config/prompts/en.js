@@ -76,6 +76,11 @@ ABSOLUTE RULES:
 - explanation: explain why the correct answer is right AND why at least one
   wrong option is false. For a hard question, describe the cross-referencing
   reasoning and the passages involved.
+- In explanation, NEVER refer to an option by its letter, number, or position
+  (do not write "option b", "option 2", "answer A", "the first option"). The
+  options are SHUFFLED before display, so a letter or a position is meaningless
+  to the reader. Always refer to an option by its CONTENT (e.g. "claiming that
+  stomata absorb light is wrong, because…").
 - Spread the questions across the whole course, not only the beginning.
 - Keep the exact terminology of the course, including foreign-language terms.
 

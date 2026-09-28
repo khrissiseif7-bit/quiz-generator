@@ -25,9 +25,16 @@ Corps (JSON) :
   "text": "string — texte source du cours (obligatoire)",
   "language": "fr | ar | en — langue demandée (optionnel, sinon détectée)",
   "difficulty": "easy | medium | hard — difficulté cible (optionnel)",
-  "count": "number — nombre de questions demandées (optionnel)"
+  "count": "number — nombre de questions demandées (optionnel)",
+  "source": "pdf | text — origine du texte (optionnel, défaut \"text\")"
 }
 ```
+
+- `source` = `"pdf"` : le texte provient d'un PDF paginé → le modèle fournit un
+  `source_page` (entier ≥ 1) pour chaque question/flashcard.
+- `source` = `"text"` (ou absent) : texte **collé**, sans pagination → aucun
+  numéro de page n'est demandé et `source_page` est **forcé à `null`** côté
+  serveur (pas de numéro inventé, aucun numéro affiché côté front).
 
 ---
 
@@ -70,9 +77,16 @@ Le corps de la réponse respecte **strictement** le schéma suivant :
 - `questions[].difficulty` ∈ { `"easy"`, `"medium"`, `"hard"` }.
 - `questions[].choices` contient **exactement 4** chaînes non vides.
 - `questions[].correct_index` est un entier de **0 à 3** inclus.
-- `questions[].source_page` et `flashcards[].source_page` sont des entiers ≥ 1.
+- `questions[].source_page` et `flashcards[].source_page` sont des entiers ≥ 1
+  **si `source = "pdf"`** ; ils valent **`null`** si `source = "text"` (texte
+  collé, sans pagination).
 - **`source_excerpt` DOIT exister réellement dans le texte source** transmis
   dans la requête (vérification anti-hallucination côté serveur).
+- **`explanation` ne doit désigner aucune proposition par sa lettre, son numéro
+  ou sa position** (les propositions sont mélangées à l'affichage). Une telle
+  référence entraîne le rejet de la question côté serveur (motif interne
+  `EXPLANATION_POSITIONAL`) : l'explication doit désigner une proposition par
+  son **contenu**.
 
 ---
 

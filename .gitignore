@@ -7,3 +7,7 @@ node_modules/
 # Base de données SQLite (persistance locale, ne doit pas être commitée)
 server/data/
 
+# Documents tiers utilisés pour les tests locaux
+test-data/*.pdf
+test-data/*-extracted.*
+

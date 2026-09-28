@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560" font-family="Arial, Helvetica, sans-serif">
+  <rect x="0" y="0" width="800" height="560" fill="#ffffff"/>
+
+  <text x="400" y="34" text-anchor="middle" font-size="21" font-weight="bold" fill="#384454">Stabilité sur 6 runs répétés (cours-fr.txt, prompt v1)</text>
+
+  <!-- Legend -->
+  <line x1="255" y1="58" x2="290" y2="58" stroke="#E1A624" stroke-width="2.5" stroke-dasharray="7 5"/>
+  <text x="296" y="62" font-size="13" fill="#384454">moyenne = 9,67 questions ; écart-type &#963; = 0,47</text>
+
+  <!-- Gridlines + Y ticks (0..10) -->
+  <line x1="70" y1="90"  x2="760" y2="90"  stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="152" x2="760" y2="152" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="214" x2="760" y2="214" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="276" x2="760" y2="276" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="338" x2="760" y2="338" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="400" x2="760" y2="400" stroke="#384454" stroke-width="1.5"/>
+
+  <text x="60" y="94"  text-anchor="end" font-size="13" fill="#384454">10</text>
+  <text x="60" y="156" text-anchor="end" font-size="13" fill="#384454">8</text>
+  <text x="60" y="218" text-anchor="end" font-size="13" fill="#384454">6</text>
+  <text x="60" y="280" text-anchor="end" font-size="13" fill="#384454">4</text>
+  <text x="60" y="342" text-anchor="end" font-size="13" fill="#384454">2</text>
+  <text x="60" y="404" text-anchor="end" font-size="13" fill="#384454">0</text>
+
+  <line x1="70" y1="90" x2="70" y2="400" stroke="#384454" stroke-width="1.5"/>
+  <text x="24" y="245" text-anchor="middle" font-size="15" fill="#384454" transform="rotate(-90 24 245)">Questions valides (sur 10)</text>
+
+  <!-- Bars -->
+  <rect x="92.5"  y="90"  width="70" height="310" fill="#317AC1"/>
+  <rect x="207.5" y="90"  width="70" height="310" fill="#317AC1"/>
+  <rect x="322.5" y="90"  width="70" height="310" fill="#317AC1"/>
+  <rect x="437.5" y="121" width="70" height="279" fill="#317AC1"/>
+  <rect x="552.5" y="90"  width="70" height="310" fill="#317AC1"/>
+  <rect x="667.5" y="121" width="70" height="279" fill="#317AC1"/>
+
+  <!-- Value labels -->
+  <text x="127.5" y="82"  text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">10</text>
+  <text x="242.5" y="82"  text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">10</text>
+  <text x="357.5" y="82"  text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">10</text>
+  <text x="472.5" y="113" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">9</text>
+  <text x="587.5" y="82"  text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">10</text>
+  <text x="702.5" y="113" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">9</text>
+
+  <!-- Mean line 9.67 -->
+  <line x1="70" y1="100.2" x2="760" y2="100.2" stroke="#E1A624" stroke-width="2.5" stroke-dasharray="7 5"/>
+
+  <!-- X labels -->
+  <text x="127.5" y="424" text-anchor="middle" font-size="14" fill="#384454">Run 1</text>
+  <text x="242.5" y="424" text-anchor="middle" font-size="14" fill="#384454">Run 2</text>
+  <text x="357.5" y="424" text-anchor="middle" font-size="14" fill="#384454">Run 3</text>
+  <text x="472.5" y="424" text-anchor="middle" font-size="14" fill="#384454">Run 4</text>
+  <text x="587.5" y="424" text-anchor="middle" font-size="14" fill="#384454">Run 5</text>
+  <text x="702.5" y="424" text-anchor="middle" font-size="14" fill="#384454">Run 6</text>
+
+  <text x="415" y="450" text-anchor="middle" font-size="15" fill="#384454">Run répété (même texte : cours-fr.txt, 4 427 c)</text>
+
+  <!-- Note -->
+  <text x="70" y="500" font-size="12" fill="#384454">Source : mesures.md, « Variance sur runs répétés » — cours-fr.txt (4 427 c, fr, 10 questions demandées).</text>
+  <text x="70" y="516" font-size="12" fill="#384454">Modèle : gemini-3.5-flash. Prompt v1. Motif des 2 rejets (runs 4 et 6) : DUPLICATE_CHOICES.</text>
+  <text x="70" y="532" font-size="12" fill="#384454">Dates et durées des 6 runs non enregistrées (n/d). Moyenne 9,67 / 10 ;</text>
+  <text x="70" y="548" font-size="12" fill="#384454">écart-type &#963; = 0,47 question ; aucun GENERATION_FAILED.</text>
+</svg>

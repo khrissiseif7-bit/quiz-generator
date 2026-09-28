@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="490" viewBox="0 0 800 490" font-family="Arial, Helvetica, sans-serif">
+  <rect x="0" y="0" width="800" height="490" fill="#ffffff"/>
+
+  <text x="400" y="34" text-anchor="middle" font-size="21" font-weight="bold" fill="#384454">Répartition de tous les rejets enregistrés, par motif</text>
+
+  <!-- Vertical gridlines + X ticks (0..6) -->
+  <line x1="230"   y1="85" x2="230"   y2="285" stroke="#384454" stroke-width="1.5"/>
+  <line x1="318.3" y1="85" x2="318.3" y2="285" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="406.7" y1="85" x2="406.7" y2="285" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="495"   y1="85" x2="495"   y2="285" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="583.3" y1="85" x2="583.3" y2="285" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="671.7" y1="85" x2="671.7" y2="285" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="760"   y1="85" x2="760"   y2="285" stroke="#D4D3DC" stroke-width="1"/>
+
+  <text x="230"   y="302" text-anchor="middle" font-size="13" fill="#384454">0</text>
+  <text x="318.3" y="302" text-anchor="middle" font-size="13" fill="#384454">1</text>
+  <text x="406.7" y="302" text-anchor="middle" font-size="13" fill="#384454">2</text>
+  <text x="495"   y="302" text-anchor="middle" font-size="13" fill="#384454">3</text>
+  <text x="583.3" y="302" text-anchor="middle" font-size="13" fill="#384454">4</text>
+  <text x="671.7" y="302" text-anchor="middle" font-size="13" fill="#384454">5</text>
+  <text x="760"   y="302" text-anchor="middle" font-size="13" fill="#384454">6</text>
+
+  <text x="495" y="328" text-anchor="middle" font-size="15" fill="#384454">Nombre d'occurrences (questions rejetées)</text>
+
+  <!-- Bar 1: DUPLICATE_CHOICES = 3 -->
+  <text x="220" y="122" text-anchor="end" font-size="14" fill="#384454">DUPLICATE_CHOICES</text>
+  <rect x="230" y="100" width="265" height="34" fill="#317AC1"/>
+  <text x="505" y="122" font-size="16" font-weight="bold" fill="#384454">3</text>
+
+  <!-- Bar 2: EXCERPT_NOT_FOUND = 1 -->
+  <text x="220" y="172" text-anchor="end" font-size="14" fill="#384454">EXCERPT_NOT_FOUND</text>
+  <rect x="230" y="150" width="88.3" height="34" fill="#317AC1"/>
+  <text x="328" y="172" font-size="16" font-weight="bold" fill="#384454">1</text>
+
+  <!-- Separator: hors périmètre -->
+  <line x1="70" y1="205" x2="760" y2="205" stroke="#D4D3DC" stroke-width="1" stroke-dasharray="6 4"/>
+  <text x="230" y="223" font-size="12" font-style="italic" fill="#384454">Hors périmètre : PDF de code Python dense, non représentatif d'un cours rédigé</text>
+
+  <!-- Bar 3: SCHEMA_INVALID = 5 (highlight) -->
+  <text x="220" y="257" text-anchor="end" font-size="14" fill="#384454">SCHEMA_INVALID</text>
+  <rect x="230" y="235" width="441.7" height="34" fill="#E1A624"/>
+  <text x="682" y="257" font-size="16" font-weight="bold" fill="#384454">5</text>
+
+  <!-- Note -->
+  <text x="70" y="360" font-size="12" fill="#384454">Source : mesures.md, recensement de TOUS les rejets consignés (section</text>
+  <text x="70" y="376" font-size="12" fill="#384454">« Données brutes »). Total : 9 rejets.</text>
+  <text x="70" y="392" font-size="12" fill="#384454">DUPLICATE_CHOICES = 3 (fr, prompt v1, gemini-3.5-flash) ;</text>
+  <text x="70" y="408" font-size="12" fill="#384454">EXCERPT_NOT_FOUND = 1 (fr, v2 « hard », gemini-3.5-flash-lite).</text>
+  <text x="70" y="424" font-size="12" fill="#384454">SCHEMA_INVALID = 5 : tous issus de chap2-numpy.pdf (code Python,</text>
+  <text x="70" y="440" font-size="12" fill="#384454">gemini-3.5-flash-lite) — mis en évidence et séparés à ce titre.</text>
+  <text x="70" y="456" font-size="12" fill="#384454">Modèles et contextes différents : recensement, PAS une comparaison contrôlée.</text>
+  <text x="70" y="472" font-size="12" fill="#384454">Blocage gemini-2.0-flash (404, 2026-09-07) exclu (0 question générée).</text>
+</svg>

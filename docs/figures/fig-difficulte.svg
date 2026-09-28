@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="585" viewBox="0 0 800 585" font-family="Arial, Helvetica, sans-serif">
+  <rect x="0" y="0" width="800" height="585" fill="#ffffff"/>
+
+  <text x="400" y="34" text-anchor="middle" font-size="21" font-weight="bold" fill="#384454">Questions valides / rejetées par niveau (prompt v2, cours photosynthèse)</text>
+
+  <!-- Legend -->
+  <rect x="300" y="52" width="14" height="14" fill="#2E7D4F"/>
+  <text x="320" y="64" font-size="13" fill="#384454">valides</text>
+  <rect x="400" y="52" width="14" height="14" fill="#C0392B"/>
+  <text x="420" y="64" font-size="13" fill="#384454">rejetées</text>
+
+  <!-- Gridlines + Y ticks (0..10) -->
+  <line x1="70" y1="90"  x2="760" y2="90"  stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="152" x2="760" y2="152" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="214" x2="760" y2="214" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="276" x2="760" y2="276" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="338" x2="760" y2="338" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="400" x2="760" y2="400" stroke="#384454" stroke-width="1.5"/>
+
+  <text x="60" y="94"  text-anchor="end" font-size="13" fill="#384454">10</text>
+  <text x="60" y="156" text-anchor="end" font-size="13" fill="#384454">8</text>
+  <text x="60" y="218" text-anchor="end" font-size="13" fill="#384454">6</text>
+  <text x="60" y="280" text-anchor="end" font-size="13" fill="#384454">4</text>
+  <text x="60" y="342" text-anchor="end" font-size="13" fill="#384454">2</text>
+  <text x="60" y="404" text-anchor="end" font-size="13" fill="#384454">0</text>
+
+  <line x1="70" y1="90" x2="70" y2="400" stroke="#384454" stroke-width="1.5"/>
+  <text x="24" y="245" text-anchor="middle" font-size="15" fill="#384454" transform="rotate(-90 24 245)">Nombre de questions (sur 10)</text>
+
+  <!-- Durations above groups -->
+  <text x="185" y="82" text-anchor="middle" font-size="15" font-weight="bold" fill="#E1A624">11,9 s</text>
+  <text x="415" y="82" text-anchor="middle" font-size="15" font-weight="bold" fill="#E1A624">56,7 s</text>
+  <text x="645" y="82" text-anchor="middle" font-size="15" font-weight="bold" fill="#E1A624">68,2 s</text>
+
+  <!-- easy: valid 10, rej 0 -->
+  <rect x="120" y="90" width="60" height="310" fill="#2E7D4F"/>
+  <text x="150" y="114" text-anchor="middle" font-size="16" font-weight="bold" fill="#ffffff">10</text>
+  <text x="220" y="393" text-anchor="middle" font-size="15" font-weight="bold" fill="#384454">0</text>
+
+  <!-- medium: valid 10, rej 0 -->
+  <rect x="350" y="90" width="60" height="310" fill="#2E7D4F"/>
+  <text x="380" y="114" text-anchor="middle" font-size="16" font-weight="bold" fill="#ffffff">10</text>
+  <text x="450" y="393" text-anchor="middle" font-size="15" font-weight="bold" fill="#384454">0</text>
+
+  <!-- hard: valid 9, rej 1 -->
+  <rect x="580" y="121" width="60" height="279" fill="#2E7D4F"/>
+  <text x="610" y="145" text-anchor="middle" font-size="16" font-weight="bold" fill="#ffffff">9</text>
+  <rect x="650" y="369" width="60" height="31" fill="#C0392B"/>
+  <text x="680" y="362" text-anchor="middle" font-size="15" font-weight="bold" fill="#384454">1</text>
+
+  <!-- X labels -->
+  <text x="185" y="424" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">facile</text>
+  <text x="415" y="424" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">moyen</text>
+  <text x="645" y="424" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">difficile</text>
+  <text x="645" y="442" text-anchor="middle" font-size="12" fill="#384454">1 rejet : EXCERPT_NOT_FOUND</text>
+
+  <text x="415" y="470" text-anchor="middle" font-size="15" fill="#384454">Niveau de difficulté demandé (prompt v2)</text>
+
+  <!-- Note -->
+  <text x="70" y="504" font-size="12" fill="#384454">Source : mesures.md, « Runs post-v2 » — cours photosynthèse (4 044 c, fr, 10 questions demandées, difficulté variable).</text>
+  <text x="70" y="520" font-size="12" fill="#384454">Modèle : gemini-3.5-flash-lite. Prompt v2. Date : 2026-09-22. Durée de génération indiquée au-dessus de chaque niveau.</text>
+  <text x="70" y="536" font-size="12" fill="#384454">Durées indicatives : un seul run par niveau, mesuré pendant une période de</text>
+  <text x="70" y="552" font-size="12" fill="#384454">saturation de l'API (erreurs 503). Elles ne permettent pas de conclure à un</text>
+  <text x="70" y="568" font-size="12" fill="#384454">effet du niveau sur la latence.</text>
+</svg>

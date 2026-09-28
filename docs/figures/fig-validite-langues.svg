@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="610" viewBox="0 0 800 610" font-family="Arial, Helvetica, sans-serif">
+  <rect x="0" y="0" width="800" height="610" fill="#ffffff"/>
+
+  <text x="400" y="38" text-anchor="middle" font-size="22" font-weight="bold" fill="#384454">Taux de questions valides par langue (prompt v1)</text>
+
+  <!-- Gridlines + Y ticks -->
+  <line x1="70" y1="80"  x2="760" y2="80"  stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="144" x2="760" y2="144" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="208" x2="760" y2="208" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="272" x2="760" y2="272" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="336" x2="760" y2="336" stroke="#D4D3DC" stroke-width="1"/>
+  <line x1="70" y1="400" x2="760" y2="400" stroke="#384454" stroke-width="1.5"/>
+
+  <text x="60" y="84"  text-anchor="end" font-size="13" fill="#384454">100</text>
+  <text x="60" y="148" text-anchor="end" font-size="13" fill="#384454">80</text>
+  <text x="60" y="212" text-anchor="end" font-size="13" fill="#384454">60</text>
+  <text x="60" y="276" text-anchor="end" font-size="13" fill="#384454">40</text>
+  <text x="60" y="340" text-anchor="end" font-size="13" fill="#384454">20</text>
+  <text x="60" y="404" text-anchor="end" font-size="13" fill="#384454">0</text>
+
+  <!-- Y axis -->
+  <line x1="70" y1="80" x2="70" y2="400" stroke="#384454" stroke-width="1.5"/>
+  <text x="24" y="245" text-anchor="middle" font-size="15" fill="#384454" transform="rotate(-90 24 245)">Taux de questions valides (%)</text>
+
+  <!-- Bars -->
+  <rect x="125" y="91.8" width="120" height="308.2" fill="#317AC1"/>
+  <rect x="355" y="80"   width="120" height="320"   fill="#317AC1"/>
+  <rect x="585" y="80"   width="120" height="320"   fill="#317AC1"/>
+
+  <!-- Value labels -->
+  <text x="185" y="84" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">96,3 %</text>
+  <text x="415" y="72" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">100,0 %</text>
+  <text x="645" y="72" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">100,0 %</text>
+
+  <!-- X labels + n -->
+  <text x="185" y="424" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">français</text>
+  <text x="185" y="444" text-anchor="middle" font-size="13" fill="#384454">n = 8 runs</text>
+  <text x="185" y="462" text-anchor="middle" font-size="13" fill="#384454">80 questions</text>
+
+  <text x="415" y="424" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">arabe</text>
+  <text x="415" y="444" text-anchor="middle" font-size="13" fill="#384454">n = 2 runs</text>
+  <text x="415" y="462" text-anchor="middle" font-size="13" fill="#384454">20 questions</text>
+
+  <text x="645" y="424" text-anchor="middle" font-size="16" font-weight="bold" fill="#384454">anglais</text>
+  <text x="645" y="444" text-anchor="middle" font-size="13" fill="#384454">n = 2 runs</text>
+  <text x="645" y="462" text-anchor="middle" font-size="13" fill="#384454">20 questions</text>
+
+  <text x="415" y="486" text-anchor="middle" font-size="15" fill="#384454">Langue</text>
+
+  <!-- Note -->
+  <text x="70" y="516" font-size="12" fill="#384454">Source : mesures.md, « Taux de questions valides par langue » (prompt v1).</text>
+  <text x="70" y="532" font-size="12" fill="#384454">Motif de rejet observé : DUPLICATE_CHOICES.</text>
+  <text x="70" y="548" font-size="12" fill="#384454">Modèle : gemini-3.5-flash (post-correctif).</text>
+  <text x="70" y="564" font-size="12" fill="#384454">fr = 8 runs agrégés (LLM direct + HTTP + 6 runs répétés) ;</text>
+  <text x="70" y="580" font-size="12" fill="#384454">ar/en = 2 runs (2026-09-07 et 2026-09-08).</text>
+  <text x="70" y="596" font-size="12" fill="#384454">Axe Y borné à 100 % pour ne pas exagérer les écarts (96,3 % contre 100,0 %).</text>
+</svg>

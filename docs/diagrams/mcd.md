@@ -35,7 +35,7 @@ erDiagram
         TEXT quiz_code FK "ON DELETE CASCADE"
         INTEGER position
         TEXT question
-        TEXT choices "JSON : [\"a\",\"b\",\"c\",\"d\"]"
+        TEXT choices "JSON : ['a','b','c','d']"
         INTEGER correct_index "0..3"
         TEXT explanation
         TEXT source_excerpt "NULL si origin='manual'"
@@ -59,7 +59,7 @@ erDiagram
         INTEGER created_at "ms epoch"
     }
 
-    courses ||--o{ quizzes : "regroupe\n(course_code)"
+    courses |o--o{ quizzes : "regroupe\n(course_code)"
     quizzes ||--o{ questions : "contient\n(quiz_code)"
     quizzes ||--o{ flashcards : "contient\n(quiz_code)"
     quizzes ||--o{ attempts : "reçoit\n(quiz_code)"
@@ -69,8 +69,8 @@ erDiagram
 
 | Relation | Cardinalité | Règle |
 |----------|-------------|-------|
-| `courses` → `quizzes` | 1 à 0..N | `course_code` nullable (quiz peut exister sans cours) |
-| `quizzes` → `questions` | 1 à 1..N | Un quiz a au moins 3 questions (règle métier, pas SQL) |
+| `courses` → `quizzes` | 0..1 à 0..N | `course_code` nullable des deux côtés : un quiz peut exister sans cours, un cours peut n'avoir aucun quiz |
+| `quizzes` → `questions` | 1 à 1..N | Contrainte métier (MIN_QUESTIONS = 3, quizzes.controller.js), pas une contrainte SQL — le schéma seul autoriserait 0 |
 | `quizzes` → `flashcards` | 1 à 0..N | Peut être vide |
 | `quizzes` → `attempts` | 1 à 0..N | Aucune tentative si jamais joué |
 | Suppression `courses` | CASCADE | Tous les quiz liés + leurs questions/flashcards/tentatives |

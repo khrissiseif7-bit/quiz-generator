@@ -93,37 +93,45 @@ export function buildPrompt({ text, language, difficulty, questionCount }) {
 /**
  * Schéma de réponse imposé au modèle (format Gemini, types en MAJUSCULES).
  * Il reflète le contrat de /docs/contract.md et force une sortie JSON structurée.
- * @param {number} questionCount - Nombre attendu de questions/flashcards (indicatif).
+ *
+ * PAGINATION : source_page n'est demandé QUE pour une source paginée (PDF). Pour
+ * un texte collé (source:"text"), il n'existe pas de pagination : on retire
+ * source_page du schéma pour ne pas inciter le modèle à inventer des numéros.
+ * @param {"pdf"|"text"} [source="pdf"] - Origine du texte source.
  * @returns {object} responseSchema pour l'API Gemini.
  */
-function schemaReponseGemini() {
-  const question = {
-    type: "OBJECT",
-    properties: {
-      id: { type: "STRING" },
-      type: { type: "STRING", enum: ["mcq"] },
-      difficulty: { type: "STRING", enum: ["easy", "medium", "hard"] },
-      question: { type: "STRING" },
-      choices: { type: "ARRAY", items: { type: "STRING" } },
-      correct_index: { type: "INTEGER" },
-      explanation: { type: "STRING" },
-      source_excerpt: { type: "STRING" },
-      source_page: { type: "INTEGER" },
-    },
-    required: ["id", "type", "difficulty", "question", "choices",
-      "correct_index", "explanation", "source_excerpt", "source_page"],
-  };
+function schemaReponseGemini(source = "pdf") {
+  const avecPage = source !== "text";
 
-  const flashcard = {
-    type: "OBJECT",
-    properties: {
-      id: { type: "STRING" },
-      front: { type: "STRING" },
-      back: { type: "STRING" },
-      source_page: { type: "INTEGER" },
-    },
-    required: ["id", "front", "back", "source_page"],
+  const proprietesQuestion = {
+    id: { type: "STRING" },
+    type: { type: "STRING", enum: ["mcq"] },
+    difficulty: { type: "STRING", enum: ["easy", "medium", "hard"] },
+    question: { type: "STRING" },
+    choices: { type: "ARRAY", items: { type: "STRING" } },
+    correct_index: { type: "INTEGER" },
+    explanation: { type: "STRING" },
+    source_excerpt: { type: "STRING" },
   };
+  const requisQuestion = ["id", "type", "difficulty", "question", "choices",
+    "correct_index", "explanation", "source_excerpt"];
+  if (avecPage) {
+    proprietesQuestion.source_page = { type: "INTEGER" };
+    requisQuestion.push("source_page");
+  }
+  const question = { type: "OBJECT", properties: proprietesQuestion, required: requisQuestion };
+
+  const proprietesFlashcard = {
+    id: { type: "STRING" },
+    front: { type: "STRING" },
+    back: { type: "STRING" },
+  };
+  const requisFlashcard = ["id", "front", "back"];
+  if (avecPage) {
+    proprietesFlashcard.source_page = { type: "INTEGER" };
+    requisFlashcard.push("source_page");
+  }
+  const flashcard = { type: "OBJECT", properties: proprietesFlashcard, required: requisFlashcard };
 
   return {
     type: "OBJECT",
@@ -150,7 +158,7 @@ function schemaReponseGemini() {
  *          'GENERATION_FAILED', réservé au cas « trop de questions rejetées ».
  */
 export async function callLLM(prompt, options = {}) {
-  const { temperature = 0.3 } = options;
+  const { temperature = 0.3, source = "pdf" } = options;
 
   const provider = process.env.LLM_PROVIDER || "gemini";
   const apiKey = process.env.LLM_API_KEY;
@@ -169,7 +177,7 @@ export async function callLLM(prompt, options = {}) {
     generationConfig: {
       temperature,
       responseMimeType: "application/json",
-      responseSchema: schemaReponseGemini(),
+      responseSchema: schemaReponseGemini(source),
     },
   };
 
